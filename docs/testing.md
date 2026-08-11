@@ -69,12 +69,15 @@ Every adapter must also run a shared conformance suite for success, cancellation
 
 Provider payload tests must prove the trust boundary independently for each path:
 
-- a configured cloud ASR Recognition Configuration sends only Recorded Audio and the supported allowed Hotword subset directly to that provider, never through a project proxy and never with an automatic privacy-changing fallback;
-- an enabled LLM request sends only current pipeline text, the Effective Prompt, and the allowed Hotword subset to the one globally active Language Model Configuration endpoint, never audio and never through an automatic privacy-changing fallback.
+- a configured cloud ASR Recognition Configuration sends only Recorded Audio and the stable supported allowed Hotword subset selected for that request directly to that provider, never through a project proxy and never with an automatic privacy-changing fallback;
+- an enabled LLM request sends only current pipeline text, the Effective Prompt, and the stable supported allowed Hotword subset selected for that request to the one globally active Language Model Configuration endpoint, never audio and never through an automatic privacy-changing fallback.
+- payload assertions require the exact selected subset, `used N of M` reporting, an Effective Prompt wrapper containing only that subset, and history storing counts rather than Hotword content.
 
 ## Persistence, privacy, and redaction tests
 
-Future persistence tests must verify independent text/audio retention, record and artifact deletion, orphan temporary-audio cleanup on normal startup, failed-session recovery even when ordinary history is disabled, and independent Raw/Processed/Final text storage. Credential serialization tests must assert that secrets do not appear in SQLite, JSON, logs, exports, backups, or crash reports.
+Future persistence tests must verify independent text/audio retention, record and artifact deletion, orphan temporary-audio cleanup on normal startup, failed-session recovery even when ordinary history is disabled, and independent Raw/Processed/Final text storage. Credential serialization tests must assert that secrets and credential-bearing Base URLs do not appear in SQLite, JSON, logs, exports, backups, or crash reports, and that credentials remain opaque CredentialStore references.
+
+Base URL validation tests must reject relative/non-absolute URLs plus userinfo, username, password, query, and fragment components before persistence and before any request; require HTTPS for non-loopback endpoints; permit HTTP only for loopback endpoints; and reject any attempt to disable TLS verification. Future adapter-setting tests must keep non-secret provider query parameters separate from Base URL and validate them independently. Invalid or credential-bearing URL input must not be echoed in validation errors, logs, or history.
 
 Log-redaction tests must reject complete Prompts, transcripts, provider response bodies, audio, Hotword content, credential-bearing URLs, account identifiers, and complete private filesystem paths. Structured failures must contain only sanitized stage/code, retry meaning, delivery certainty, and recoverable-material indicators.
 

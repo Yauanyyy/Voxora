@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for execution on branch codex/m1-documentation-baseline.
+Implemented and independently verified on branch codex/m1-documentation-baseline. Ready for PR review; the user retains merge and review-thread ownership.
 
 ## Objective
 
@@ -125,6 +125,12 @@ No build, paid provider call, platform test, network integration test, or model 
 ## Rollback and recovery
 
 The correction changes Markdown only and has no runtime, data, credential, schema, migration, or model effect. Before merge it can be corrected with ordinary additive commits or left unmerged. Shared history must not be rewritten.
+
+## Verification record
+
+The execution agent changed only docs/implementation-plan.md, docs/product.md, docs/architecture.md, and docs/testing.md. The primary agent clarified one product-document sentence so query and fragment components are not grammatically presented as parts of URL userinfo. The read-only verification agent then returned ACCEPT with no actionable findings.
+
+Verified evidence covers exact selected Hotword-subset payloads, `used N of M` reporting, count-only Hotword history, selected-subset-only Effective Prompt wrapping, fail-closed Base URL validation before persistence and request, opaque CredentialStore references, endpoint transport rules, TLS-verification enforcement, sanitized diagnostics, scope allowlisting, relative links, whitespace, sensitive content, private paths, GPL-3.0-only invariants, and absence of executable, dependency, model, asset, schema, migration, CI, or notice changes. The verified canonical GPLv3 LICENSE SHA-256 remains `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`. Builds, provider calls, platform tests, network integration tests, and model downloads were not run because this task is documentation-only.
 
 ## Executor Brief
 
