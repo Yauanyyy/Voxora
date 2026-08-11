@@ -1,10 +1,10 @@
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
+import { dirname, extname, posix, relative, resolve, win32 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SCRIPT_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = resolve(SCRIPT_DIRECTORY, "..");
-const BLOCKED_LICENSE_MARKERS = ["AGPL", "SSPL", "-NC-", "NON-COMMERCIAL"];
+const REVIEWED_MODEL_LICENSE_EXPRESSIONS = new Set(["Apache-2.0"]);
 
 function requireExactKeys(value, requiredKeys, context) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -42,6 +42,20 @@ function requireHttpsUrl(value, context) {
   ) {
     throw new Error(
       `${context} must be an HTTPS URL without userinfo, query, or fragment`,
+    );
+  }
+}
+
+function requireRepositoryRelativePath(value, context) {
+  requireNonEmptyString(value, context);
+  if (
+    posix.isAbsolute(value) ||
+    win32.isAbsolute(value) ||
+    /^[A-Za-z]:/.test(value) ||
+    value.split(/[\\/]/).includes("..")
+  ) {
+    throw new Error(
+      `${context} must be repository-relative without parent traversal`,
     );
   }
 }
@@ -93,12 +107,10 @@ export function validateModelManifest(manifest) {
     "license",
   );
   requireNonEmptyString(manifest.license.spdx, "license.spdx");
-  if (
-    BLOCKED_LICENSE_MARKERS.some((marker) =>
-      manifest.license.spdx.toUpperCase().includes(marker),
-    )
-  ) {
-    throw new Error("license.spdx contains a license denied by project policy");
+  if (!REVIEWED_MODEL_LICENSE_EXPRESSIONS.has(manifest.license.spdx)) {
+    throw new Error(
+      "license.spdx is not an explicitly reviewed model license expression",
+    );
   }
   if (manifest.license.commercialUseAllowed !== true) {
     throw new Error("license.commercialUseAllowed must be true");
@@ -122,12 +134,7 @@ export function validateModelManifest(manifest) {
   for (const [index, file] of manifest.files.entries()) {
     const context = `files[${index}]`;
     requireExactKeys(file, ["path", "sha256", "sizeBytes"], context);
-    requireNonEmptyString(file.path, `${context}.path`);
-    if (isAbsolute(file.path) || file.path.split(/[\\/]/).includes("..")) {
-      throw new Error(
-        `${context}.path must be repository-relative without parent traversal`,
-      );
-    }
+    requireRepositoryRelativePath(file.path, `${context}.path`);
     if (!Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0) {
       throw new Error(`${context}.sizeBytes must be a positive safe integer`);
     }
@@ -153,13 +160,7 @@ export function validateModelManifest(manifest) {
     throw new Error("review.reviewedAt must use YYYY-MM-DD");
   }
   requireNonEmptyString(manifest.review.reviewer, "review.reviewer");
-  requireNonEmptyString(manifest.review.evidence, "review.evidence");
-  if (
-    isAbsolute(manifest.review.evidence) ||
-    manifest.review.evidence.split(/[\\/]/).includes("..")
-  ) {
-    throw new Error("review.evidence must be a repository-relative path");
-  }
+  requireRepositoryRelativePath(manifest.review.evidence, "review.evidence");
 }
 
 async function findJsonFiles(directory) {

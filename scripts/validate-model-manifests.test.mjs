@@ -64,14 +64,46 @@ test("rejects placeholder hashes", () => {
   );
 });
 
-test("rejects licenses denied by project policy", () => {
+for (const spdx of ["AGPL-3.0-only", "LicenseRef-Proprietary-Research-Only"]) {
+  test(`rejects unreviewed model license expression ${spdx}`, () => {
+    assert.throws(
+      () =>
+        validateModelManifest({
+          ...validManifest,
+          license: { ...validManifest.license, spdx },
+        }),
+      /not an explicitly reviewed model license expression/,
+    );
+  });
+}
+
+test("rejects a Windows absolute model file path on every host OS", () => {
   assert.throws(
     () =>
       validateModelManifest({
         ...validManifest,
-        license: { ...validManifest.license, spdx: "AGPL-3.0-only" },
+        files: [
+          {
+            ...validManifest.files[0],
+            path: "C:\\absolute\\model.onnx",
+          },
+        ],
       }),
-    /denied by project policy/,
+    /repository-relative/,
+  );
+});
+
+test("rejects a Windows absolute review evidence path on every host OS", () => {
+  assert.throws(
+    () =>
+      validateModelManifest({
+        ...validManifest,
+        review: {
+          ...validManifest.review,
+          evidence: "D:\\absolute\\model-review.md",
+        },
+      }),
+    /repository-relative/,
   );
 });
 

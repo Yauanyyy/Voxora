@@ -196,6 +196,7 @@ Local verification completed on Windows on 2026-08-12 with Rust 1.97.1, Node.js 
 - `cargo tree` confirmed the exact inward workspace edges and no external dependency in the three portable crates beyond their declared workspace edges.
 - `npm run tauri build -- --no-bundle` produced the Windows desktop executable. A launched-build visual check confirmed the title, honest M2-only message, no-session state, and expected accessible document structure; the application was then closed.
 - `npm audit` reported zero known vulnerabilities. No model manifest/artifact, provider/platform/history/local-ASR crate, paid call, credential path, telemetry, packaging, publishing, or M3 behavior was introduced.
+- Review follow-up on 2026-08-12 replaced model-license substring blocking with an exact allowlist initially containing only `Apache-2.0`; synthetic AGPL and proprietary/research-only expressions now fail closed. Repository-relative validation now applies both POSIX and Windows path semantics to artifact and review-evidence paths, with Windows absolute-path regressions covered by tests.
 
 ## Executor Brief
 
