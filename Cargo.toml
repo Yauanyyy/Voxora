@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/desktop/src-tauri",
+    "crates/voice-application",
+    "crates/voice-core",
+    "crates/voice-ports",
+]
+default-members = [
+    "crates/voice-application",
+    "crates/voice-core",
+    "crates/voice-ports",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "GPL-3.0-only"
+repository = "https://github.com/Yauanyyy/Voxora"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

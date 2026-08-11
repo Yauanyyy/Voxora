@@ -1,0 +1,72 @@
+:root {
+  color: #20252b;
+  background: #f3f5f7;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+.shell {
+  display: grid;
+  min-height: 100vh;
+  align-content: center;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem;
+}
+
+.shell__eyebrow {
+  color: #536172;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.4rem, 8vw, 4rem);
+  line-height: 1;
+}
+
+.shell__message {
+  max-width: 38rem;
+  color: #536172;
+  font-size: 1.15rem;
+  line-height: 1.6;
+}
+
+.shell__status {
+  border-left: 3px solid #247a68;
+  padding: 0.7rem 1rem;
+  color: #164f45;
+  background: #e1f1ed;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .shell {
+    padding: 2rem 1.5rem;
+  }
+}

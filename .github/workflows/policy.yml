@@ -1,0 +1,52 @@
+name: Dependency and artifact policy
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.15.0
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Install exact frontend dependencies
+        run: npm ci --ignore-scripts
+        working-directory: apps/desktop
+
+      - name: Check npm licenses and sources
+        run: npm run licenses:check
+        working-directory: apps/desktop
+
+      - name: Validate model-manifest policy
+        run: npm run models:check
+        working-directory: apps/desktop
+
+      - name: Test tracked-file secret patterns
+        run: node --test scripts/check-tracked-secrets.test.mjs
+
+      - name: Check tracked files for secret patterns
+        run: node scripts/check-tracked-secrets.mjs
+
+      - name: Install cargo-deny
+        run: cargo +1.97.1 install cargo-deny --locked --version 0.20.2
+
+      - name: Prove unknown Rust licenses fail closed
+        run: node scripts/test-cargo-deny-fail-closed.mjs
+
+      - name: Check Rust licenses, advisories, bans, and sources
+        run: cargo +1.97.1 deny check

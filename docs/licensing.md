@@ -4,7 +4,7 @@
 
 Voxora's project SPDX expression is `GPL-3.0-only`, which means GNU GPL version 3 only; it is not `GPL-3.0-or-later`. [`LICENSE`](../LICENSE) is the unmodified canonical GNU GPL version 3 text. Product concepts may inform requirements, but implementation must be independently authored: do not copy, rewrite, port, translate, or derive source from SayIt or another GPL/AGPL project.
 
-M1 distributes no runtime dependency, native component, asset, provider SDK, inference framework, or model. [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) must remain truthful as future milestones add reviewed items.
+M2 adds reviewed Rust/npm source and build dependencies plus a project-authored placeholder icon for the buildable desktop shell. Exact evidence is retained in [`dependency-reviews/m2-workspace-ci.md`](dependency-reviews/m2-workspace-ci.md), [`Cargo.lock`](../Cargo.lock), [`apps/desktop/package-lock.json`](../apps/desktop/package-lock.json), and [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). M2 adds no provider SDK, inference framework, model manifest, or model artifact.
 
 ## Fail-closed review
 

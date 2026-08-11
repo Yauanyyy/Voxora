@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress on branch `codex/m2-workspace-ci-skeleton`.
+Implemented and locally verified on branch `codex/m2-workspace-ci-skeleton`. Delivery to `main` remains subject to the Ready for review Pull Request checks and the user's merge decision.
 
 The primary agent owns this plan, the dependency review, implementation, validation, and Git integration. The current session does not authorize subagent delegation, so the primary agent will execute the bounded Executor Brief directly while preserving the role and scope constraints in the repository runbooks.
 
@@ -31,6 +31,7 @@ If an authoritative source conflicts with this plan, implementation stops until 
 - `crates/voice-core`, `crates/voice-ports`, and `crates/voice-application` as portable libraries with inward-only manifest dependencies, crate-level boundary documentation, and non-speculative metadata/build tests.
 - `apps/desktop` as a minimal npm workspace containing React, TypeScript, Vite, Vitest, ESLint, and exact npm lock data.
 - `apps/desktop/src-tauri` as the only production composition root, depending inward on `voice-application` and using Tauri 2 without provider, persistence, model, or Windows-adapter integration.
+- A minimal project-authored SVG and generated Windows ICO required by Tauri's Windows resource build; it is a placeholder build asset, not a settled product logo.
 - A simple frontend page that identifies the M2 skeleton and does not imply dictation features are implemented.
 - A model-manifest schema/policy and dependency-free validator with synthetic pass/fail tests. No actual model manifest or model artifact is approved or added.
 - A dependency-license review record, updated third-party notices, and fail-closed automated Cargo/npm license checks.
@@ -43,7 +44,7 @@ If an authoritative source conflicts with this plan, implementation stops until 
 - Provider, local-ASR, persistence, credential, model download, platform, Windows API, audio, shortcut, target, clipboard, injection, tray, overlay, history, settings, or application-profile functionality.
 - Empty future provider, history, local-ASR, or platform crates.
 - Tauri commands/events beyond the framework bootstrap; React-owned orchestration; global mutable session state.
-- Model weights, model downloads, native third-party binaries committed to the repository, icons, fonts, sample media, or other product assets.
+- Model weights, model downloads, native third-party binaries committed to the repository, third-party/product-branded icons, fonts, sample media, or product assets beyond the required project-authored M2 build icon.
 - Packaging, signing, installer generation, publishing, paid provider calls, or application auto-update.
 - Changes to accepted product defaults, architecture direction, licensing policy, milestone order, or merge ownership.
 
@@ -98,7 +99,7 @@ The initial direct-version choices are fixed for reproducibility and will be che
 | Component | Version | Role | Declared license/source reviewed 2026-08-12 |
 | --- | --- | --- | --- |
 | Rust stable | 1.97.1 | compiler, formatter, Clippy | Rust project distribution metadata from `static.rust-lang.org`; toolchain only, not bundled |
-| `tauri` | 2.9.5 | desktop composition root | Apache-2.0 OR MIT; `github.com/tauri-apps/tauri` |
+| `tauri` | 2.11.5 | desktop composition root | Apache-2.0 OR MIT; `github.com/tauri-apps/tauri` |
 | `tauri-build` | 2.6.3 | Tauri build script | Apache-2.0 OR MIT; `github.com/tauri-apps/tauri` |
 | `react` / `react-dom` | 19.2.8 | static shell rendering | MIT; `github.com/facebook/react` |
 | `@tauri-apps/cli` | 2.11.4 | desktop development/build CLI | Apache-2.0 OR MIT; `github.com/tauri-apps/tauri` |
@@ -110,6 +111,9 @@ The initial direct-version choices are fixed for reproducibility and will be che
 | `typescript-eslint` | 8.67.0 | TypeScript ESLint integration | MIT; `github.com/typescript-eslint/typescript-eslint` |
 | `globals` | 17.9.0 | ESLint environment data | MIT; `github.com/sindresorhus/globals` |
 | React type packages | 19.2.18 / 19.2.4 | TypeScript declarations | MIT; `github.com/DefinitelyTyped/DefinitelyTyped` |
+| `@types/node` | 24.13.3 | Node/CI TypeScript declarations | MIT; `github.com/DefinitelyTyped/DefinitelyTyped` |
+| `prettier` | 3.9.6 | frontend/script/workflow formatting | MIT; `github.com/prettier/prettier` |
+| `cargo-deny` | 0.20.2 | Rust license/source/advisory policy | Apache-2.0 OR MIT; `github.com/EmbarkStudios/cargo-deny` |
 | GitHub `checkout` / `setup-node` | pinned v6 tag commits | CI source checkout/Node setup | MIT; official `github.com/actions/*` actions, commit-pinned |
 
 The final review must inspect every resolved transitive license and source through the lockfiles and fail-closed checks. Any unexpected license or source pauses acceptance until documented.
@@ -119,7 +123,7 @@ The final review must inspect every resolved transitive license and source throu
 1. Commit this authoritative M2 task plan before product-code changes.
 2. Create the root Cargo workspace, pin Rust 1.97.1 with rustfmt/Clippy, and configure workspace package/lint metadata.
 3. Add the three portable library crates with only boundary documentation, inward manifest dependencies, and metadata/build baseline tests.
-4. Create the minimal Tauri 2 composition root and configuration without commands, plugins, platform adapters, or packaging assets.
+4. Create the minimal Tauri 2 composition root and configuration without commands, plugins, platform adapters, or packaging; add only the project-authored SVG/ICO required by the Windows resource build.
 5. Create the React/TypeScript/Vite shell, Vitest render test, ESLint configuration, exact npm engines, and deterministic npm lockfile.
 6. Add the model-manifest schema, validator, synthetic validator tests, and policy documentation.
 7. Add fail-closed npm and Cargo license policies, resolve the exact lock graphs, review all unexpected licenses/sources, and record the accepted results.
@@ -140,7 +144,7 @@ cargo check --workspace --all-targets
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-targets
 cargo deny check
-npm ci                         (apps/desktop)
+npm ci --ignore-scripts        (apps/desktop)
 npm run format:check           (apps/desktop)
 npm run lint                   (apps/desktop)
 npm run test                   (apps/desktop)
@@ -180,6 +184,18 @@ Also validate:
 ## Rollback and recovery
 
 M2 introduces only source, manifests, lockfiles, local development configuration, and CI. It creates no schema, migration, credential, model, audio, transcript, or user-data state. Before merge, corrections use additive commits on the task branch without rewriting shared history. Abandoning M2 means leaving the branch and Pull Request unmerged for the user; it does not require data migration or cleanup.
+
+## Verification record
+
+Local verification completed on Windows on 2026-08-12 with Rust 1.97.1, Node.js 24.15.0, npm 11, and cargo-deny 0.20.2.
+
+- `git diff --check`, Rust formatting, locked workspace check, Clippy with warnings denied, and locked workspace tests passed.
+- `cargo deny check` passed for the reviewed `x86_64-pc-windows-msvc` graph; the synthetic unknown-license case failed closed as required.
+- A clean `npm ci --ignore-scripts` followed by Prettier, ESLint, Vitest, the production frontend build, npm license/source/integrity checks, and model-manifest checks passed.
+- Tracked and untracked source secret-pattern tests/scanning passed, and all relative Markdown links and local anchors resolved.
+- `cargo tree` confirmed the exact inward workspace edges and no external dependency in the three portable crates beyond their declared workspace edges.
+- `npm run tauri build -- --no-bundle` produced the Windows desktop executable. A launched-build visual check confirmed the title, honest M2-only message, no-session state, and expected accessible document structure; the application was then closed.
+- `npm audit` reported zero known vulnerabilities. No model manifest/artifact, provider/platform/history/local-ASR crate, paid call, credential path, telemetry, packaging, publishing, or M3 behavior was introduced.
 
 ## Executor Brief
 

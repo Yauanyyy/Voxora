@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Voxora placeholder application icon</title>
+  <defs>
+    <linearGradient id="background" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#174B67" />
+      <stop offset="1" stop-color="#1C7A68" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#background)" />
+  <path
+    d="M116 211v90M172 163v186M228 116v280M284 148v216M340 188v136M396 224v64"
+    fill="none"
+    stroke="#F4F8F7"
+    stroke-linecap="round"
+    stroke-width="28"
+  />
+</svg>

@@ -4,7 +4,7 @@ Voxora is a planned Windows-first desktop voice-input application. A user-initia
 
 ## Current status
 
-This repository is in the documentation and design stage. It contains the product contract, architecture boundaries, state and failure semantics, testing obligations, licensing policy, and accepted architectural decisions. No product implementation, build workspace, provider or platform integration, third-party runtime component, native binary, asset, or model weight is currently distributed here. Planned behavior is not an assertion that a working application exists.
+M2 establishes a buildable development skeleton: portable `voice-core`, `voice-ports`, and `voice-application` crates; a Tauri 2 composition root; a React/TypeScript/Vite shell; baseline Rust and Vitest tests; exact lockfiles; and CI/policy checks. The desktop currently displays only an explicit not-yet-implemented state. Dictation, providers, Windows adapters, persistence, credentials, models, history, and product UX remain unimplemented, so planned behavior is not an assertion that those capabilities work.
 
 ## Intended first release
 
@@ -25,7 +25,7 @@ Voxora does not operate a project server and is not planned to include accounts,
 
 ## Architecture at a glance
 
-The future desktop composition is intentionally layered:
+The desktop skeleton establishes this intended layering:
 
 ```text
 React UI → Tauri desktop boundary → voice-application → voice-ports → voice-core
@@ -33,6 +33,33 @@ React UI → Tauri desktop boundary → voice-application → voice-ports → vo
 ```
 
 Portable business logic is independent of Tauri, React, Windows APIs, UI Automation types, and provider SDKs. Adapters depend inward on explicit ports; Windows-only behavior remains in `platform-windows`; React renders state and submits commands but does not orchestrate sessions. See [`docs/architecture.md`](docs/architecture.md) and [`docs/state-machine.md`](docs/state-machine.md).
+
+## M2 development checks
+
+The repository pins Rust 1.97.1 and Node.js 24.15.0. Common commands are:
+
+```text
+cargo fmt --all -- --check
+cargo check --locked -p voice-core -p voice-ports -p voice-application --all-targets
+cargo clippy --locked -p voice-core -p voice-ports -p voice-application --all-targets --all-features -- -D warnings
+cargo test --locked -p voice-core -p voice-ports -p voice-application --all-targets
+cargo deny check
+```
+
+From `apps/desktop`:
+
+```text
+npm ci --ignore-scripts
+npm run format:check
+npm run lint
+npm run test
+npm run build
+npm run licenses:check
+npm run models:check
+npm run tauri build -- --no-bundle
+```
+
+The desktop build command is Windows-only in M2. See [`docs/dependency-reviews/m2-workspace-ci.md`](docs/dependency-reviews/m2-workspace-ci.md) for the exact dependency, license, advisory, action-pin, and asset review.
 
 ## Privacy and recovery posture
 

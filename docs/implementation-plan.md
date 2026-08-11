@@ -267,6 +267,8 @@ Acceptance:
 
 ### M2 — Workspace and CI skeleton
 
+Task status: implemented and locally verified on `codex/m2-workspace-ci-skeleton`; integration into `main` remains subject to Pull Request checks and the user's merge decision.
+
 Objective: establish the smallest buildable cross-platform workspace without speculative provider/platform implementations.
 
 Deliverables:
