@@ -1,8 +1,10 @@
 name: Windows desktop
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -26,6 +28,10 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
+        working-directory: apps/desktop
+
+      - name: Check installed npm licenses and locked identities
+        run: npm run licenses:check
         working-directory: apps/desktop
 
       - name: Build desktop application without packaging

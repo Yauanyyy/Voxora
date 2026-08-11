@@ -32,7 +32,7 @@ The approval is limited to the M2 Windows desktop shell and portable-crate CI. I
 | `@types/node` | 24.13.3 | Node type declarations | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) | MIT | Approved as type declarations. |
 | `@types/react`, `@types/react-dom` | 19.2.18, 19.2.4 | React type declarations | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) | MIT | Approved as type declarations. |
 
-All npm packages are fetched from `https://registry.npmjs.org/`. The npm 11 lockfile records an exact version, registry URL, SHA-512 integrity value, and declared license for every resolved package entry.
+All npm packages are fetched from `https://registry.npmjs.org/`. The npm 11 lockfile records an exact version, registry URL, SHA-512 integrity value, and declared license for every resolved package entry. After `npm ci --ignore-scripts`, policy validation also reads each installed package's own `package.json`: its derived package identity, exact version, and license must match the lock and reviewed allowlist, and a missing non-optional installation fails closed. Platform-filtered optional entries may be absent, so the Windows desktop job repeats this check for the Windows-specific packages it installs.
 
 ## CI and toolchain inputs
 
@@ -86,7 +86,7 @@ The Cargo policy intentionally selects the Windows desktop target. M2 compiles t
 | MIT | 120 |
 | MPL-2.0 | 12 |
 
-The validator rejects a missing or unreviewed license, non-registry source, missing exact version, or missing SHA-512 integrity value. Synthetic negative tests prove these fail-closed paths without real credentials or private data. `npm audit` reported zero known vulnerabilities when the lockfile was created; future lock changes must be re-audited and re-reviewed.
+The validator rejects a missing or unreviewed lock license, non-registry source, missing exact version, missing SHA-512 integrity value, missing required installation, installed identity/version mismatch, or installed license that differs from or is denied despite the lock metadata. Synthetic negative tests prove these fail-closed paths without real credentials or private data. `npm audit` reported zero known vulnerabilities when the lockfile was created; future lock changes must be re-audited and re-reviewed.
 
 ## Native components and assets
 

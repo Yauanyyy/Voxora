@@ -1,4 +1,5 @@
-import { readdir, readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import { dirname, extname, posix, relative, resolve, win32 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -52,6 +53,7 @@ function requireRepositoryRelativePath(value, context) {
     posix.isAbsolute(value) ||
     win32.isAbsolute(value) ||
     /^[A-Za-z]:/.test(value) ||
+    value.includes("\\") ||
     value.split(/[\\/]/).includes("..")
   ) {
     throw new Error(
@@ -60,7 +62,69 @@ function requireRepositoryRelativePath(value, context) {
   }
 }
 
-export function validateModelManifest(manifest) {
+function requireCalendarDate(value, context) {
+  requireNonEmptyString(value, context);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    throw new Error(`${context} must be a real calendar date in YYYY-MM-DD`);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [
+    31,
+    leapYear ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+
+  if (
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth[month - 1]
+  ) {
+    throw new Error(`${context} must be a real calendar date in YYYY-MM-DD`);
+  }
+}
+
+async function requireTrackedRegularFile(value, context, options) {
+  const repositoryRoot = options.repositoryRoot ?? REPOSITORY_ROOT;
+  const filePath = resolve(repositoryRoot, ...value.split("/"));
+  let fileMetadata;
+
+  try {
+    fileMetadata = await lstat(filePath);
+  } catch {
+    throw new Error(`${context} must reference a tracked regular file`);
+  }
+  if (!fileMetadata.isFile()) {
+    throw new Error(`${context} must reference a tracked regular file`);
+  }
+
+  const tracked = options.trackedFiles
+    ? options.trackedFiles.has(value)
+    : spawnSync("git", ["ls-files", "--error-unmatch", "--", value], {
+        cwd: repositoryRoot,
+        stdio: "ignore",
+      }).status === 0;
+  if (!tracked) {
+    throw new Error(`${context} must reference a tracked regular file`);
+  }
+}
+
+export async function validateModelManifest(manifest, options = {}) {
   requireExactKeys(
     manifest,
     [
@@ -97,9 +161,7 @@ export function validateModelManifest(manifest) {
 
   requireExactKeys(manifest.source, ["retrievedAt", "url"], "source");
   requireHttpsUrl(manifest.source.url, "source.url");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(manifest.source.retrievedAt)) {
-    throw new Error("source.retrievedAt must use YYYY-MM-DD");
-  }
+  requireCalendarDate(manifest.source.retrievedAt, "source.retrievedAt");
 
   requireExactKeys(
     manifest.license,
@@ -156,11 +218,14 @@ export function validateModelManifest(manifest) {
   if (manifest.review.status !== "approved") {
     throw new Error("review.status must equal approved");
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(manifest.review.reviewedAt)) {
-    throw new Error("review.reviewedAt must use YYYY-MM-DD");
-  }
+  requireCalendarDate(manifest.review.reviewedAt, "review.reviewedAt");
   requireNonEmptyString(manifest.review.reviewer, "review.reviewer");
   requireRepositoryRelativePath(manifest.review.evidence, "review.evidence");
+  await requireTrackedRegularFile(
+    manifest.review.evidence,
+    "review.evidence",
+    options,
+  );
 }
 
 async function findJsonFiles(directory) {
@@ -188,14 +253,14 @@ async function findJsonFiles(directory) {
   return files.sort();
 }
 
-export async function validateModelManifestDirectory(directory) {
+export async function validateModelManifestDirectory(directory, options = {}) {
   const files = await findJsonFiles(directory);
   const failures = [];
 
   for (const file of files) {
     try {
       const manifest = JSON.parse(await readFile(file, "utf8"));
-      validateModelManifest(manifest);
+      await validateModelManifest(manifest, options);
     } catch (error) {
       failures.push(`${relative(REPOSITORY_ROOT, file)}: ${error.message}`);
     }

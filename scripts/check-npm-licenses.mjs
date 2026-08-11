@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 const ALLOWED_LICENSES = new Set([
   "Apache-2.0",
@@ -15,9 +15,83 @@ const ALLOWED_LICENSES = new Set([
 
 const PUBLIC_REGISTRY_PREFIX = "https://registry.npmjs.org/";
 
+function expectedPackageName(packagePath) {
+  const segments = packagePath.split("/");
+  const nodeModulesIndex = segments.lastIndexOf("node_modules");
+  const firstNameSegment = segments[nodeModulesIndex + 1];
+
+  if (!firstNameSegment) {
+    return null;
+  }
+  if (firstNameSegment.startsWith("@")) {
+    const secondNameSegment = segments[nodeModulesIndex + 2];
+    return secondNameSegment
+      ? `${firstNameSegment}/${secondNameSegment}`
+      : null;
+  }
+
+  return firstNameSegment;
+}
+
+async function checkInstalledManifest(
+  lockDirectory,
+  packagePath,
+  lockMetadata,
+  failures,
+) {
+  const context = packagePath || "root package";
+  const manifestPath = packagePath
+    ? resolve(lockDirectory, ...packagePath.split("/"), "package.json")
+    : resolve(lockDirectory, "package.json");
+  let installed;
+
+  try {
+    installed = JSON.parse(await readFile(manifestPath, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT" && packagePath && lockMetadata.optional) {
+      return;
+    }
+    failures.push(
+      `${context}: installed package.json is missing or unreadable`,
+    );
+    return;
+  }
+
+  const expectedName = packagePath
+    ? expectedPackageName(packagePath)
+    : lockMetadata.name;
+  if (!expectedName || installed.name !== expectedName) {
+    failures.push(
+      `${context}: installed package identity does not match the lock`,
+    );
+  }
+  if (installed.version !== lockMetadata.version) {
+    failures.push(
+      `${context}: installed package version does not match the lock`,
+    );
+  }
+
+  const expectedLicense = packagePath ? lockMetadata.license : "GPL-3.0-only";
+  if (installed.license !== expectedLicense) {
+    failures.push(
+      `${context}: installed package license does not match the lock`,
+    );
+  }
+  if (
+    packagePath
+      ? !ALLOWED_LICENSES.has(installed.license)
+      : installed.license !== "GPL-3.0-only"
+  ) {
+    failures.push(
+      `${context}: installed package has an unreviewed or denied license ${JSON.stringify(installed.license)}`,
+    );
+  }
+}
+
 export async function checkPackageLock(lockPath) {
   const lock = JSON.parse(await readFile(lockPath, "utf8"));
   const failures = [];
+  const lockDirectory = dirname(resolve(lockPath));
 
   if (lock.lockfileVersion !== 3 || typeof lock.packages !== "object") {
     failures.push(
@@ -29,6 +103,9 @@ export async function checkPackageLock(lockPath) {
   const root = lock.packages[""];
   if (root?.license !== "GPL-3.0-only") {
     failures.push("the root npm package must declare GPL-3.0-only");
+  }
+  if (root) {
+    await checkInstalledManifest(lockDirectory, "", root, failures);
   }
 
   for (const [packagePath, metadata] of Object.entries(lock.packages)) {
@@ -66,6 +143,13 @@ export async function checkPackageLock(lockPath) {
     ) {
       failures.push(`${packagePath}: missing SHA-512 registry integrity`);
     }
+
+    await checkInstalledManifest(
+      lockDirectory,
+      packagePath,
+      metadata,
+      failures,
+    );
   }
 
   return failures;
@@ -85,7 +169,7 @@ async function main() {
   }
 
   console.log(
-    "npm dependency licenses, sources, versions, and integrity fields are reviewed",
+    "npm lock and installed package identities, versions, licenses, sources, and integrity fields are reviewed",
   );
 }
 

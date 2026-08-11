@@ -1,8 +1,10 @@
 name: Rust portable crates
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read

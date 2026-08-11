@@ -1,8 +1,10 @@
 name: Dependency and artifact policy
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -28,7 +30,7 @@ jobs:
         run: npm ci --ignore-scripts
         working-directory: apps/desktop
 
-      - name: Check npm licenses and sources
+      - name: Check installed npm licenses and locked identities
         run: npm run licenses:check
         working-directory: apps/desktop
 

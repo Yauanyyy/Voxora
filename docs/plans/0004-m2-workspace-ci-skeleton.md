@@ -197,6 +197,7 @@ Local verification completed on Windows on 2026-08-12 with Rust 1.97.1, Node.js 
 - `npm run tauri build -- --no-bundle` produced the Windows desktop executable. A launched-build visual check confirmed the title, honest M2-only message, no-session state, and expected accessible document structure; the application was then closed.
 - `npm audit` reported zero known vulnerabilities. No model manifest/artifact, provider/platform/history/local-ASR crate, paid call, credential path, telemetry, packaging, publishing, or M3 behavior was introduced.
 - Review follow-up on 2026-08-12 replaced model-license substring blocking with an exact allowlist initially containing only `Apache-2.0`; synthetic AGPL and proprietary/research-only expressions now fail closed. Repository-relative validation now applies both POSIX and Windows path semantics to artifact and review-evidence paths, with Windows absolute-path regressions covered by tests.
+- A second review follow-up binds npm lock metadata to installed package identity, version, and license declarations, requires model review evidence to be an existing tracked regular file, and rejects impossible calendar dates. All four workflows now run for Pull Requests and for pushes to `main` only, avoiding duplicate feature-branch push and Pull Request runs while preserving post-merge validation; the Windows desktop job also checks its installed platform-specific npm packages.
 
 ## Executor Brief
 
