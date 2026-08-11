@@ -2,7 +2,7 @@
 
 ## Status and test philosophy
 
-M1 defines future verification obligations; it does not add a test harness or claim that tests currently pass. Tests must prove the documented contract with deterministic fakes before native capture, provider calls, model downloads, or real insertion are introduced. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
+M2 establishes only build, metadata, static-shell, license-policy, model-manifest-policy, and secret-pattern test baselines. The behavioral obligations below still begin with M3 and must use deterministic fakes before native capture, provider calls, model downloads, or real insertion are introduced. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
 
 ## Portable state and domain tests
 
@@ -93,7 +93,7 @@ Model-manager tests cover user-initiated download cancellation/resume as support
 
 ## CI intent (M2 and later)
 
-The master plan intends Windows/macOS/Linux formatting, common-crate compile, lint, and tests; Windows desktop/adapter tests; frontend build/lint/Vitest; dependency/license/model-manifest checks; and tracked-file secret-pattern checks. M1 only records this intent. CI must never make paid provider calls or download large model weights. M2 owns the CI implementation and workspace setup.
+M2 implements Windows/macOS/Linux formatting plus common-crate compile/lint/tests; a Windows Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. The portable M2 tests validate package metadata only; they do not claim M3 lifecycle coverage. CI makes no paid provider call and downloads no model weight.
 
 ## Test evidence and review
 

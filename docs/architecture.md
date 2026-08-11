@@ -2,7 +2,7 @@
 
 ## Status and intent
 
-This is the planned architecture for a documentation-stage project. It describes boundaries and dependency direction without creating crates, adapters, manifests, or runtime behavior. The first release is Windows-first, but portable business logic is designed independently of Windows and provider APIs.
+This is the planned architecture for a Windows-first product. M2 establishes the `voice-core`, `voice-ports`, `voice-application`, Tauri composition-root, and React shell boundaries without implementing domain behavior, ports, adapters, or session orchestration. Portable business logic remains independent of Windows and provider APIs.
 
 ## Layer responsibilities
 
@@ -78,6 +78,6 @@ Voxora is a local desktop application. It does not require a project-operated se
 
 ## Expected future repository responsibilities
 
-The master plan records the expected crate tree. `voice-core`, `voice-ports`, and `voice-application` are the portable foundation; `history-sqlite` owns persistence; provider adapters own Doubao, OpenAI-compatible processing, and sherpa-onnx integration; `platform-windows` owns native capture, shortcuts, targeting, credentials, and insertion; the Tauri crate composes the desktop. M1 intentionally creates none of these directories or manifests.
+The master plan records the expected crate tree. M2 creates only `voice-core`, `voice-ports`, `voice-application`, and the Tauri/React desktop shell needed for the build boundary. `history-sqlite` will own persistence; provider adapters will own Doubao, OpenAI-compatible processing, and sherpa-onnx integration; `platform-windows` will own native capture, shortcuts, targeting, credentials, and insertion. Those future adapter crates do not exist yet.
 
 See ADRs [0001](adr/0001-windows-first-portable-core.md), [0002](adr/0002-tauri-rust-react-desktop-stack.md), and [0005](adr/0005-ports-and-adapters.md) for the accepted architectural choices.
