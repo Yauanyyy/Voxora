@@ -267,7 +267,7 @@ Acceptance:
 
 ### M2 — Workspace and CI skeleton
 
-Task status: implemented and locally verified on `codex/m2-workspace-ci-skeleton`; integration into `main` remains subject to Pull Request checks and the user's merge decision.
+Task status: implemented, reviewed, and merged into `main` through Pull Request #2 by the user.
 
 Objective: establish the smallest buildable cross-platform workspace without speculative provider/platform implementations.
 
@@ -288,6 +288,8 @@ Acceptance:
 - no empty provider or platform crate is added merely to match the future tree.
 
 ### M3 — Portable domain and session state machine
+
+Task status: approved for implementation on `codex/m3-portable-domain-state-machine`; see [`docs/plans/0005-m3-portable-domain-state-machine.md`](plans/0005-m3-portable-domain-state-machine.md).
 
 Objective: prove the complete dictation lifecycle using fakes before any native or provider integration.
 
