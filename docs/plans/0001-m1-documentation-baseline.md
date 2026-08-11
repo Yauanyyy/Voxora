@@ -266,10 +266,10 @@ Run from the repository root:
     git diff --check
     git diff --name-status HEAD
     git diff --stat HEAD
-    git grep -n -E 'TODO|TBD|FIXME' -- README.md THIRD_PARTY_NOTICES.md CONTEXT.md docs
-    git grep -n -E 'GPL-3\.0-or-later' -- .
+    git grep -n -E 'TODO|TBD|FIXME' -- README.md THIRD_PARTY_NOTICES.md CONTEXT.md docs ':!docs/plans'
+    git grep -n -i -E 'SPDX-License-Identifier:[[:space:]]*GPL-3\.0-or-later|licensed under[[:space:]]+GPL-3\.0-or-later|License:[[:space:]]*GPL-3\.0-or-later' -- .
 
-The TODO/TBD/FIXME and GPL-3.0-or-later searches must return no matches. Also perform and report:
+Both searches must return no matches. Excluding task plans from the unfinished-marker search prevents the validation instructions from matching themselves. The license search rejects an incorrect project-license declaration while allowing explanatory text that contrasts GPL-3.0-only with GPL-3.0-or-later. Also perform and report:
 
 - exact presence of the three root deliverables, six topic documents, and seven ADRs;
 - comparison of LICENSE with the trusted canonical GNU GPL version 3 text;
