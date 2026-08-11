@@ -77,6 +77,8 @@ docs/product.md must cover every subsection of the Accepted product model:
 
 It must also state product audience, Windows-first scope, visible settings without standard/expert modes, defaults, first-release scope, post-first-release scope, privacy disclosures, and explicit non-goals. It must distinguish planned behavior from currently implemented behavior.
 
+The LLM and Prompt contract must also state that users may save multiple named Language Model Configurations while at most one is globally active. Deleting a Custom Prompt Preset referenced by an Application Profile requires warning and explicit confirmation; confirmed deletion resets every affected profile to follow the global Active Prompt Preset.
+
 ### Architecture specification
 
 docs/architecture.md must define:
@@ -93,6 +95,8 @@ docs/architecture.md must define:
 - persistence boundaries between SQLite metadata/text, audio artifacts, credentials, and future model files;
 - non-server operation and manual application/model update boundaries;
 - expected future crate and adapter responsibilities without creating those crates.
+
+The provider trust boundary must distinguish cloud ASR from LLM processing. Cloud ASR sends Recorded Audio and any supported allowed Hotword subset only when the user has selected and configured that cloud Recognition Configuration. LLM processing sends only the current pipeline text, Effective Prompt, and enabled allowed Hotword subset when an Active Language Model Configuration exists. Neither path uses a project-operated proxy or automatic privacy-changing fallback.
 
 ### State machine and failure semantics
 
@@ -121,13 +125,17 @@ It must define structured commands/events and session-scoped or attempt-scoped i
 
 The following meanings are fixed for M1:
 
-- If processing fails but Raw Transcript is successfully delivered, the Dictation Session completes with a processing-fallback warning; it is not a terminal recognition or delivery failure.
+- Terminal outcomes are independent of warning/failure codes and recoverable-material availability: `DeliveredAutomatically`, `ManualDeliveryRequired`, `DeliveryUncertain`, `Cancelled`, or `Failed`.
+- If processing fails but Raw Transcript is successfully inserted, the terminal outcome is `DeliveredAutomatically` with a processing-fallback warning; it is not a terminal recognition or delivery failure.
 - If automatic insertion cannot be performed safely but Final Text is preserved in the Result Panel or clipboard, the outcome requires manual delivery; the text is not considered lost.
 - A retry from history adds a Recognition Attempt to the existing Dictation Record. It does not overwrite the previous attempt and does not pretend that a new recording session occurred.
 - The recording mode that started the active session owns its stop gesture. Another recording-start gesture cannot create or take over a second session.
 - Esc during capture deletes the intentionally cancelled audio and creates no history. Esc after capture stops work that remains safely cancellable and preserves Recorded Audio and available results in history.
 - Once an insertion operation may have become irreversible, cancellation does not roll it back or automatically retry it. The result becomes delivery-uncertain when success cannot be confirmed, preventing duplicate text.
 - Events received after cancellation, timeout, superseding retry, or terminal completion are rejected when their Session ID, Recognition Attempt ID, or expected phase no longer matches.
+- Capture failure, empty audio, recognition empty/timeout/provider failure, and a cancelled recognition attempt without a higher-level user cancellation terminate as `Failed`. Recoverable-material flags independently record any audio or incomplete transcript that remains.
+- Esc during or after capture terminates as `Cancelled`; its sanitized stage/reason and material flags distinguish the intentional no-history capture cancellation from post-capture preservation.
+- A persistence failure never erases an existing Recovery Artifact or drops in-memory transcript/Final Text merely to clean up the session. Material remains marked non-durable until `PersistenceSucceeded`. The user receives an immediate generic unsaved-history warning because the reason cannot be assumed to exist in history. If Final Text is not already confirmed delivered, it is presented through the Result Panel and then clipboard-last-resort. If the session otherwise delivered text, its delivery outcome remains `DeliveredAutomatically`, `ManualDeliveryRequired`, or `DeliveryUncertain` with a persistence warning; otherwise it remains `Cancelled` or `Failed` as applicable. Audio retained only as a non-durable Recovery Artifact is not claimed to survive process exit or crash, and ordinary orphan cleanup remains the next-startup policy.
 
 Structured errors must contain only sanitized stage/code, retry meaning, delivery certainty, and recoverable-material indicators. They must not contain provider response bodies, credentials, complete Prompts, complete transcripts, Hotword content, credential-bearing URLs, audio, or complete private filesystem paths.
 
@@ -144,6 +152,8 @@ docs/testing.md must turn documented behavior into future test obligations:
 - Windows manual and adapter tests for focus, packaged/classic app identity, elevation, microphone loss, modifier-only shortcuts, and clipboard races;
 - CI intent from the master plan, while making clear that CI implementation belongs to M2;
 - a rule that CI never makes paid provider calls or downloads large model weights.
+
+Tests must assert the exact terminal outcome, warning/failure metadata, and durable/non-durable material flags for capture failure, empty audio, both Esc timings, recognition timeout/cancellation/provider failure, processing fallback, each delivery result, and persistence failure. Privacy tests must distinguish cloud-ASR audio/Hotword transmission from LLM text/Effective-Prompt/Hotword transmission.
 
 ### Licensing policy and checklists
 
@@ -291,6 +301,8 @@ No paid provider call, package installation, network integration test, model dow
 - Product defaults, fallback behavior, history/recovery behavior, privacy boundaries, and non-goals match the master plan without contradiction.
 - Architecture documentation makes all portable-core, inward-dependency, adapter, Tauri/React, Windows-boundary, and session-state invariants unambiguous.
 - State-machine documentation deterministically answers cancellation, timeout, retry, late/stale response, processing fallback, target invalidation, insertion uncertainty, persistence failure, and recovery scenarios.
+- Terminal outcomes remain orthogonal to warning/failure metadata and recoverable-material durability, with exact outcomes assigned to all required failure and cancellation transitions.
+- Product and architecture documentation explicitly disclose cloud-ASR audio transmission and separately describe the LLM request payload and user-configuration gates.
 - The two settled glossary additions are concise domain definitions with no implementation details.
 - LICENSE exactly matches the canonical GNU GPL version 3 terms, while project policy consistently says GPL-3.0-only.
 - Licensing documentation contains separate fail-closed dependency and model acceptance checklists.

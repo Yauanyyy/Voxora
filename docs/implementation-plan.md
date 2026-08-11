@@ -74,7 +74,7 @@ The project does not operate or require a public server. It has no account syste
 ### LLM and Prompts
 
 - LLM processing is global and default-off.
-- One optional active `Language Model Configuration` supplies Base URL, credential reference, model, parameters, timeout, and reasoning-mode preference.
+- Users may save multiple named `Language Model Configuration` entries. At most one is globally active and supplies Base URL, credential reference, model, parameters, timeout, and reasoning-mode preference.
 - Absence of an active LLM configuration makes LLM processing unavailable.
 - Application Profiles cannot choose or disable the LLM provider.
 - Requests are stateless and non-streaming in the first release. They send only the current session text, Effective Prompt, and enabled Hotwords.
@@ -86,6 +86,7 @@ The project does not operate or require a public server. It has no account syste
 - Application Profile Prompt selection overrides the current global Prompt for that application.
 - Copying any Prompt creates an editable custom preset named `Original name Copy`, then `Copy 2`, and so on. Content is copied; shortcuts and references are not. The new copy does not automatically become active.
 - After copying a Prompt, the UI opens the newly created custom preset directly in its edit view.
+- Deleting a Custom Prompt Preset referenced by an Application Profile requires a warning and explicit confirmation. If deletion proceeds, every affected profile stops selecting that preset and follows the global Active Prompt Preset.
 - Enabled Hotwords are appended to the selected Prompt at request time using a Voxora-owned, immutable wrapper that marks the list as inert reference data. The stored Prompt Preset is never modified.
 
 ### Hotwords
@@ -326,6 +327,7 @@ Acceptance:
 
 - API keys never appear in SQLite, JSON, logs, exported settings, or backups;
 - built-in prompts cannot be edited/deleted and copies do not inherit shortcuts;
+- deleting a referenced Custom Prompt Preset requires confirmation and resets affected Application Profiles to follow the global Active Prompt Preset;
 - deletion and retention remove associated artifacts consistently;
 - failed sessions remain recoverable according to policy;
 - orphan temporary audio cleanup is tested;
