@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for execution on branch codex/m1-documentation-baseline.
+Implemented and independently verified on branch codex/m1-documentation-baseline. Ready for review; the user retains merge ownership.
 
 The primary agent owns this plan and the Executor Brief. The execution agent may implement only the bounded work below. A read-only verification agent must accept the result before final integration.
 
@@ -315,6 +315,12 @@ No paid provider call, package installation, network integration test, model dow
 ## Rollback and recovery
 
 M1 changes only Markdown and license text. It has no schema, migration, dependency, runtime, user-data, credential, or model-state effect. Before merge, corrections are made with ordinary additive commits on the task branch; shared history is not rewritten. If M1 must be abandoned, leave the branch and Pull Request unmerged for the user to decide. Never delete or rewrite unrelated repository history.
+
+## Verification record
+
+The execution agent completed only the approved documentation files and did not stage or commit. A read-only verification agent initially identified terminal-outcome, persistence-recovery, and cloud-ASR privacy gaps. The primary agent tightened this plan, the executor corrected the four affected documents, and the verifier then returned ACCEPT with no remaining findings.
+
+Verified evidence includes exact deliverable presence, complete relative-link resolution, scope allowlisting, whitespace checks, sensitive-content checks, truthful third-party notices, separate dependency/model review gates, and byte-for-byte comparison of LICENSE with the canonical GNU GPL version 3 text. The verified LICENSE SHA-256 is `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`. Runtime builds, provider/platform calls, and model downloads were not run because M1 intentionally contains no executable artifacts.
 
 ## Executor Brief
 

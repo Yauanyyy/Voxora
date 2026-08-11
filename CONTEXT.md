@@ -114,6 +114,16 @@ _Avoid_: Processing Profile, application pipeline
 A rule that associates an application identity with Processing Overrides and an optional Prompt Preset selection.
 _Avoid_: App configuration, window rule
 
+## History Records
+
+**Dictation Record**:
+One persistent history record for a recorded dictation, relating its Recorded Audio, Recognition Attempts, transcripts, Final Text, outcome, and sanitized failure information.
+_Avoid_: History row, transcript item
+
+**Recognition Attempt**:
+One recognition execution over Recorded Audio using one Recognition Configuration; a history retry creates another attempt without replacing earlier attempts.
+_Avoid_: Retry session, recognition profile
+
 ## Vocabulary Assistance
 
 **Hotword Library**:
