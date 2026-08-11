@@ -8,12 +8,12 @@ M1 defines future verification obligations; it does not add a test harness or cl
 
 Use deterministic transition tables and, where useful, property tests for invalid event ordering and stale identifiers. The tables must cover:
 
-- Push-to-Talk and Toggle start/stop, mode-owned stop gestures, competing shortcuts, one-active-session enforcement, maximum-duration stop, capture failure, and empty audio;
-- Esc during capture versus Esc after capture, including deletion/no-history and preservation/recovery differences;
+- Push-to-Talk and Toggle start/stop, mode-owned stop gestures guarded by starting mode plus Session ID, competing shortcuts, one-active-session enforcement, maximum-duration stop, capture failure, and empty audio;
+- Esc during capture versus Esc after capture before and after irreversible delivery, including deletion/no-history, preservation/recovery, DeliveryUncertain, and no-rollback/no-automatic-retry differences;
 - Partial Transcript acceptance, hidden normal UI behavior, final recognition, empty final, timeout, cancellation, provider failure, retry attempts, and late/stale response rejection;
 - transactional local-rule/LLM processing, unavailable or disabled LLM skip, Raw Transcript fallback, and `DeliveredAutomatically` with a processing-fallback warning when fallback text is inserted;
 - target/profile resolution at capture end, target invalidation, focus changes without reactivation, insertion success, definite failure, delivery uncertainty, Result Panel, and clipboard-last-resort paths;
-- persistence failure, recoverable-material flags, retention/deletion decisions, and retry as another Recognition Attempt in the same Dictation Record.
+- persistence failure, recoverable-material flags, retention/deletion decisions, and record-scoped retry as another Recognition Attempt in the same Dictation Record.
 
 Use a fake clock to drive deadlines and cancellation without sleeping. Validate serialization compatibility for portable identifiers, phases, the exact terminal outcomes, orthogonal warning/failure metadata, recoverable-material availability, durability flags, and sanitized errors.
 
@@ -26,7 +26,8 @@ Every state-transition table must assert one exact terminal outcome and independ
 | Capture failure | `Failed` | Any actual Recorded Audio remains available; durability depends on persistence. |
 | Empty audio | `Failed` | No provider call and no recoverable zero-length audio artifact; sanitized empty-audio metadata. |
 | Esc during capture | `Cancelled` | Audio is deleted and no history or Recovery Artifact is created. |
-| Esc after capture | `Cancelled` | Recorded Audio and available results remain available, durable only after persistence succeeds. |
+| Esc after capture before irreversible delivery | `Cancelled` | Recorded Audio and available results remain available, durable only after persistence succeeds. |
+| Esc after irreversible delivery begins | Preserve `DeliveredAutomatically` when delivery is confirmed, or `DeliveryUncertain` when it is not; Esc after terminal delivery is stale. | No rollback or automatic retry; preserve Final Text through the applicable delivery/recovery path. |
 | Recognition empty, timeout, or provider failure | `Failed` | Audio and any explicitly incomplete partial remain recoverable; warning/failure metadata is sanitized. |
 | Recognition cancellation without higher-level user cancellation | `Failed` | The attempt stops without replacing prior attempts; stale responses cannot mutate the record. |
 | Processing fallback followed by confirmed insertion | `DeliveredAutomatically` | Raw Transcript remains separately retained and a processing-fallback warning is present. |
@@ -36,6 +37,16 @@ Every state-transition table must assert one exact terminal outcome and independ
 | Persistence failure | Preserve the existing `DeliveredAutomatically`, `ManualDeliveryRequired`, `DeliveryUncertain`, `Cancelled`, or `Failed` outcome | Existing Recovery Artifacts and in-memory text are not erased; all available material is non-durable until `PersistenceSucceeded`; show a generic unsaved-history warning and use Result Panel/clipboard-last-resort if Final Text is not confirmed delivered. Do not claim non-durable audio survives exit or crash. |
 
 The matrix must also prove that a persistence warning never becomes a sixth terminal outcome and that late responses after cancellation, timeout, retry, or terminal completion cannot alter the selected outcome or durability flags.
+
+## Mode guards, irreversible delivery, and history retry
+
+The transition suite must include these deterministic cases:
+
+- `StartPushToTalk` and `StartToggle` bind the active Session ID and starting mode; only a matching `ReleasePushToTalk` or `StopToggle` can stop that session. Cross-mode releases/stops, stale Session IDs, duplicate stops, and post-capture stops are rejected without mutation.
+- Esc before delivery becomes irreversible yields `Cancelled` and preserves applicable materials. Once clipboard paste or SendInput may be irreversible, Esc cannot change the result to `Cancelled`: confirmed delivery remains `DeliveredAutomatically`, unconfirmed delivery remains `DeliveryUncertain`, and neither rollback nor automatic retry occurs. Esc after terminal delivery is stale.
+- `RetryRecognition` is accepted only for a durable Dictation Record with usable Recorded Audio, no live Dictation Session, and no other active retry. It retains the originating Session ID, creates a fresh Recognition Attempt ID, increments the attempt revision, and enters the record-scoped retry phase without creating a new session.
+- Retry responses are accepted only when Dictation Record ID, originating Session ID, fresh Attempt ID, revision, and expected retry phase match. Success appends a successful attempt-scoped Raw Transcript for manual use; empty, timeout, cancellation, and provider failure mark only that attempt failed. Prior attempts, the original terminal session, and its results remain immutable.
+- Retry never runs the Processing Pipeline, calls an LLM, resolves or reuses an Insertion Target, shows an insertion Result Panel, or injects text. Responses from an earlier attempt, closed retry, or mismatched identifiers are stale and cannot mutate the record.
 
 ## Fake ports and contract coverage
 

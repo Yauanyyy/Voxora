@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for execution on branch codex/m1-documentation-baseline.
+Implemented and independently verified on branch codex/m1-documentation-baseline. Ready for PR review; the user retains merge and review-thread ownership.
 
 ## Objective
 
@@ -129,6 +129,12 @@ No runtime build, provider call, platform test, paid API call, or model download
 ## Rollback and recovery
 
 The correction changes Markdown only and has no runtime, data, credential, migration, or model effect. Before merge it can be corrected with ordinary additive commits or left unmerged. Shared history must not be rewritten.
+
+## Verification record
+
+The execution agent changed only docs/state-machine.md and docs/testing.md. The first read-only verification pass found one remaining contradiction in the testing outcome matrix for post-capture Esc. After that row was split into pre-irreversible and post-irreversible cases, the verifier returned ACCEPT with no remaining findings.
+
+Verified evidence covers mode- and Session-ID-owned stop guards, irreversible-delivery Esc behavior, the record-scoped history retry lifecycle, exact five-outcome consistency, stale-event rejection, matching test obligations, scope allowlisting, relative links, whitespace, sensitive content, private paths, license invariants, and absence of executable or dependency changes. Runtime/provider/platform/model checks were not run because this task is documentation-only.
 
 ## Executor Brief
 
