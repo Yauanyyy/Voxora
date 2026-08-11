@@ -74,10 +74,12 @@ The project does not operate or require a public server. It has no account syste
 ### LLM and Prompts
 
 - LLM processing is global and default-off.
-- One optional active `Language Model Configuration` supplies Base URL, credential reference, model, parameters, timeout, and reasoning-mode preference.
+- Users may save multiple named `Language Model Configuration` entries. At most one is globally active and supplies a validated persisted Base URL, an opaque credential reference, model, parameters, timeout, and reasoning-mode preference.
 - Absence of an active LLM configuration makes LLM processing unavailable.
 - Application Profiles cannot choose or disable the LLM provider.
-- Requests are stateless and non-streaming in the first release. They send only the current session text, Effective Prompt, and enabled Hotwords.
+- A persisted Base URL must parse as an absolute URL and contain only scheme, host, optional port, and path. Userinfo, username, password, query, and fragment are rejected before persistence and before any provider request. HTTPS is required for non-loopback endpoints; HTTP is permitted only for loopback endpoints; TLS verification cannot be disabled. Credential values enter only through the opaque CredentialStore reference.
+- Future non-secret provider query parameters, if needed by an adapter, use separate validated adapter settings and are never embedded in Base URL. Invalid input reports only sanitized field/error meaning and is never echoed in logs or history.
+- Requests are stateless and non-streaming in the first release. They send only the current session text, Effective Prompt, and the stable supported allowed Hotword subset selected for the request.
 - Reasoning mode is `provider default`, `disabled`, or `enabled`. Known adapters map supported fields; generic endpoints never receive guessed fields.
 - Voxora always has an Active Prompt Preset. Built-in Prompt Presets are immutable and non-deletable but copyable.
 - Initial built-in prompts: original-text cleanup, concise expression, and formal expression. Original-text cleanup is the default.
@@ -86,7 +88,8 @@ The project does not operate or require a public server. It has no account syste
 - Application Profile Prompt selection overrides the current global Prompt for that application.
 - Copying any Prompt creates an editable custom preset named `Original name Copy`, then `Copy 2`, and so on. Content is copied; shortcuts and references are not. The new copy does not automatically become active.
 - After copying a Prompt, the UI opens the newly created custom preset directly in its edit view.
-- Enabled Hotwords are appended to the selected Prompt at request time using a Voxora-owned, immutable wrapper that marks the list as inert reference data. The stored Prompt Preset is never modified.
+- Deleting a Custom Prompt Preset referenced by an Application Profile requires a warning and explicit confirmation. If deletion proceeds, every affected profile stops selecting that preset and follows the global Active Prompt Preset.
+- The Effective Prompt is built at request time with a Voxora-owned, immutable wrapper that appends only the stable supported allowed Hotword subset selected for that request as inert reference data. The stored Prompt Preset is never modified.
 
 ### Hotwords
 
@@ -94,7 +97,7 @@ The project does not operate or require a public server. It has no account syste
 - The library contains globally enabled or disabled named groups.
 - Each Hotword contains only its text; it has no weight, pronunciation, alias, provider field, or application-specific selection.
 - Enabled Hotwords are offered to ASR providers that support them and to an enabled LLM request.
-- Provider or token limits must never cause silent omission. Voxora uses a stable allowed subset and displays `used N of M`; history stores counts, not complete Hotword content.
+- Provider or token limits must never cause silent omission. Voxora selects a stable supported allowed Hotword subset for each request and displays `used N of M`; history stores counts, not complete Hotword content.
 - Future Hotword Candidate analysis is local-only, default-off, never auto-adds terms, and is scheduled after the first release.
 
 ### Recording and UI
@@ -324,8 +327,10 @@ Deliverables:
 
 Acceptance:
 
-- API keys never appear in SQLite, JSON, logs, exported settings, or backups;
+- API keys and credential-bearing URLs never appear in SQLite, JSON, logs, exported settings, or backups; credentials are represented only by opaque CredentialStore references;
+- persisted Base URLs parse as absolute URLs and are limited to scheme, host, optional port, and path; userinfo, username, password, query, and fragment are rejected before persistence;
 - built-in prompts cannot be edited/deleted and copies do not inherit shortcuts;
+- deleting a referenced Custom Prompt Preset requires confirmation and resets affected Application Profiles to follow the global Active Prompt Preset;
 - deletion and retention remove associated artifacts consistently;
 - failed sessions remain recoverable according to policy;
 - orphan temporary audio cleanup is tested;
@@ -388,13 +393,15 @@ Deliverables:
 - streaming audio and Partial Transcript events;
 - hotword capability negotiation and limit reporting;
 - OpenAI-compatible stateless, non-streaming text processing;
-- Base URL, model, parameters, timeout, Prompt, hotword wrapper, and capability-aware reasoning mode;
+- validated Base URL, model, parameters, timeout, Prompt, hotword wrapper, and capability-aware reasoning mode;
 - sanitized provider error mapping.
 
 Acceptance:
 
 - no request is sent without explicit user configuration;
-- non-loopback HTTP endpoints are rejected and TLS verification cannot be disabled;
+- invalid Base URLs are rejected before persistence and before a request; userinfo, username, password, query, and fragment are not accepted;
+- non-loopback HTTP endpoints are rejected, loopback HTTP is permitted, and TLS verification cannot be disabled;
+- Base URL validation failures report sanitized field/error meaning without echoing the input URL;
 - LLM default remains off;
 - provider response bodies and sensitive request data are not logged;
 - final ASR, partial failure, LLM timeout, empty result, malformed response, cancellation, and late response are tested;
