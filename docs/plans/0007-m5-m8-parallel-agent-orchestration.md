@@ -48,6 +48,7 @@ Milestone complete.
 - The parallel-readiness gate and frozen-contract baseline.
 - Workstream, slice, shared-file, and Integration-stage ownership.
 - Agent instantiation and scheduling rules.
+- Project subagent concurrency capacity for the four M5-M8 workstreams.
 - Shared-contract and shared-file change control.
 - Workstream states, gates, handoffs, verification, and completion semantics.
 - Stage-end centralized Integration with a narrowly controlled early integration
@@ -123,6 +124,16 @@ The number of active agents is a scheduling choice, not an architectural fact.
 The primary agent may run fewer workstreams than available concurrency slots,
 pause one workstream, or reuse an idle agent for a later non-overlapping slice.
 No plan may require four execution agents to be active at the same instant.
+
+The project sets `agents.max_concurrent_threads_per_session = 4`. Codex defines
+this limit as spawned-agent threads excluding the primary agent, so it permits
+one concurrent subagent for each of M5, M6, M7, and M8 when all four workstreams
+are independently ready. The value is a capacity ceiling, not a requirement to
+spawn four agents or keep them alive throughout the phase. When all four slots
+are occupied, a planning, shared-change, or verification agent waits for an
+executor to become quiescent and release a slot, or the primary pauses an
+appropriate workstream; the plan does not depend on an unconfigured fifth
+subagent.
 
 ## Parallel-readiness gate
 
@@ -462,6 +473,8 @@ The primary agent must also inspect the complete documentation diff and confirm:
   parallel-readiness gate and one later centralized Integration stage.
 - The plan contains no requirement that all four workstreams be active or finish
   simultaneously.
+- Project configuration permits four spawned subagents concurrently, excluding
+  the primary, without treating that capacity as a mandatory fixed topology.
 - Each workstream has explicit responsibilities and prohibited scope.
 - Shared contracts/files have one serialized change protocol and cannot be edited
   incidentally by leaf executors.
