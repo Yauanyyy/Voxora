@@ -252,7 +252,22 @@ Before the M8 artifact gate, owns only:
 - exact sherpa-onnx framework/integration review;
 - exact SenseVoice Small artifact provenance, contents, size, SHA-256, license,
   commercial-use, redistribution, and accompanying-file review;
+- quarantined review-only retrieval of the exact candidate artifact when a
+  primary-approved bounded review brief requires the actual files to establish
+  their contents, byte sizes, SHA-256 values, provenance, or governing terms;
 - a proposed manifest and notice impact for primary approval.
+
+Gate-review retrieval is evidence collection, not product acquisition or model
+approval. The review brief must name the exact authoritative source and expected
+revision, use an isolated non-product location, record retrieval method/date and
+hash evidence, and define cleanup or retention of review evidence. Retrieved
+weights and accompanying files must not be committed, bundled, copied into an
+application/model installation directory, activated, loaded for inference, or
+made available to product code. Only non-sensitive review records and proposed
+metadata may enter the repository. A successful download or matching hash does
+not by itself approve the artifact; every license, commercial-use,
+redistribution, accompanying-file, provenance, security, and integration check
+must still pass.
 
 No M8 product implementation begins until the complete gate is accepted. After
 the gate, later briefs may assign:
@@ -453,8 +468,11 @@ evidence.
 - Credentials remain behind the platform credential port and opaque references.
 - M7 repeats Base URL validation immediately before a request and logs no provider
   bodies or sensitive payloads.
-- M8 adds no product code, manifest claim, download, or framework/model dependency
-  before the exact artifact gate passes.
+- Before the exact artifact gate passes, M8 adds no product model-download
+  behavior, approved manifest claim, framework/model dependency, installation,
+  activation, inference, bundling, or committed artifact. A primary-approved
+  bounded review brief may retrieve the exact candidate only into quarantine for
+  direct contents/size/hash/license/provenance evidence under the M8 rules above.
 - M6 keeps all Windows types and native behavior in `platform-windows`.
 - Every dependency, native component, protocol-derived artifact, asset, framework,
   and model change uses the shared-change lane with a complete review and
