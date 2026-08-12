@@ -1591,18 +1591,41 @@ impl HistoryMaintenancePort for HistorySqlite {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use voice_ports::{
         AudioArtifactStorePort, ConfigurationStorePort, HistoryMaintenancePort,
         HistoryPersistRequest, HistoryStorePort, LibraryStorePort, ProcessingConfigurationPort,
         PromptStorePort,
     };
 
+    static TEMP_ROOT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
     fn temp_root() -> PathBuf {
+        let process_id = std::process::id();
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        std::env::temp_dir().join(format!("voxora-m4-{nanos}"))
+        let sequence = TEMP_ROOT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("voxora-m4-{process_id}-{nanos}-{sequence}"))
+    }
+
+    #[test]
+    fn temp_roots_are_unique_when_generated_concurrently() {
+        const CALLS: usize = 32;
+        let mut roots = std::thread::scope(|scope| {
+            let handles = (0..CALLS)
+                .map(|_| scope.spawn(temp_root))
+                .collect::<Vec<_>>();
+            handles
+                .into_iter()
+                .map(|handle| handle.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+
+        roots.sort_unstable();
+        roots.dedup();
+        assert_eq!(roots.len(), CALLS);
     }
 
     #[test]
