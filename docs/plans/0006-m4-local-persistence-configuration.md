@@ -2,10 +2,10 @@
 
 ## Status
 
-Implemented and locally verified on branch
+Implemented and verified on branch
 `codex/m4-local-persistence-configuration`. The final read-only verifier verdict
-is `ACCEPT`. Remote Windows/macOS/Linux CI remains required evidence before
-merge. The primary agent owns product and architecture interpretation,
+is `ACCEPT`. Windows/macOS/Linux, desktop, frontend, and policy checks passed on
+Ready for review PR #4. The primary agent owns product and architecture interpretation,
 dependency review, status documentation, Git integration, and Pull Request.
 
 The implementation is limited to M4. It adds no desktop settings/history UI,
@@ -410,8 +410,9 @@ write/read/delete round trip. `cargo deny 0.20.2` reported advisories, bans,
 licenses, and sources all `ok`; the secret scanner checked 97 tracked and
 untracked source files. Dependency-feature and portable-boundary inspection
 confirmed bundled SQLite only, target-scoped Windows credentials, no inward
-adapter leakage, and no Voxora-authored unsafe code. Remote cross-platform CI
-is not claimed locally and remains pending Pull Request evidence.
+adapter leakage, and no Voxora-authored unsafe code. Ready for review PR #4 then
+passed the Windows/macOS/Linux portable and persistence matrix, Windows desktop
+and credential-adapter job, frontend job, and dependency/artifact policy job.
 
 ## Executor Brief
 

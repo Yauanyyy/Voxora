@@ -323,7 +323,7 @@ Acceptance scenarios:
 
 ### M4 — Local persistence and configuration
 
-Task status: implemented and locally verified on `codex/m4-local-persistence-configuration`; the final read-only verifier verdict is `ACCEPT`. Remote Windows/macOS/Linux CI remains required evidence before merge. See [`docs/plans/0006-m4-local-persistence-configuration.md`](plans/0006-m4-local-persistence-configuration.md).
+Task status: implemented and verified on `codex/m4-local-persistence-configuration`; the final read-only verifier verdict is `ACCEPT`, and the Windows/macOS/Linux, desktop, frontend, and policy checks passed on Ready for review PR #4. See [`docs/plans/0006-m4-local-persistence-configuration.md`](plans/0006-m4-local-persistence-configuration.md).
 
 Objective: persist safe configuration and history while keeping credentials outside SQLite.
 
