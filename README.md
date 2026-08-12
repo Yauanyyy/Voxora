@@ -4,7 +4,7 @@ Voxora is a planned Windows-first desktop voice-input application. A user-initia
 
 ## Current status
 
-M2 establishes a buildable development skeleton: portable `voice-core`, `voice-ports`, and `voice-application` crates; a Tauri 2 composition root; a React/TypeScript/Vite shell; baseline Rust and Vitest tests; exact lockfiles; and CI/policy checks. The desktop currently displays only an explicit not-yet-implemented state. Dictation, providers, Windows adapters, persistence, credentials, models, history, and product UX remain unimplemented, so planned behavior is not an assertion that those capabilities work.
+M3 now implements and locally verifies the portable Dictation Session domain, correlated live and history-retry reducers, capability ports, session-scoped application coordination, deterministic fakes, and exhaustive lifecycle tests in `voice-core`, `voice-ports`, and `voice-application`. The desktop still displays only the M2 not-yet-implemented shell: real capture, providers, Windows adapters, persistence, credentials, models, history UI, and product UX remain unimplemented. The portable proof therefore does not claim that end-user dictation currently works.
 
 ## Intended first release
 
@@ -34,7 +34,7 @@ React UI → Tauri desktop boundary → voice-application → voice-ports → vo
 
 Portable business logic is independent of Tauri, React, Windows APIs, UI Automation types, and provider SDKs. Adapters depend inward on explicit ports; Windows-only behavior remains in `platform-windows`; React renders state and submits commands but does not orchestrate sessions. See [`docs/architecture.md`](docs/architecture.md) and [`docs/state-machine.md`](docs/state-machine.md).
 
-## M2 development checks
+## Portable development checks
 
 The repository pins Rust 1.97.1 and Node.js 24.15.0. Common commands are:
 
@@ -59,7 +59,7 @@ npm run models:check
 npm run tauri build -- --no-bundle
 ```
 
-The desktop build command is Windows-only in M2. See [`docs/dependency-reviews/m2-workspace-ci.md`](docs/dependency-reviews/m2-workspace-ci.md) for the exact dependency, license, advisory, action-pin, and asset review.
+The desktop build command is Windows-only in the current workspace. M3 adds no dependency, model, asset, native component, lockfile entry, or notice obligation. See [`docs/dependency-reviews/m2-workspace-ci.md`](docs/dependency-reviews/m2-workspace-ci.md) for the existing dependency, license, advisory, action-pin, and asset review.
 
 ## Privacy and recovery posture
 

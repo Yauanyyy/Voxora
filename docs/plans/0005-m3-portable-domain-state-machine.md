@@ -2,11 +2,20 @@
 
 ## Status
 
-Approved for implementation on branch `codex/m3-portable-domain-state-machine`.
+Implemented and verified on branch `codex/m3-portable-domain-state-machine`.
 The primary agent owns this plan, the final Executor Brief, review-finding
 classification, validation, Git integration, and Pull Request handling. A
 `sol_planner` subagent supplied read-only evidence and design advice; the
 primary agent resolved the open boundaries below and authored this plan.
+
+The implementation is confined to the three existing portable crates and their
+tests. It adds no dependency, adapter, native integration, model, asset,
+migration, network destination, UI behavior, lockfile change, or notice change.
+Cross-platform CI remains the remote evidence gate; the verification record
+below describes the completed local and read-only-agent checks.
+The user later limited this run's Git integration endpoint to commit and push;
+Pull Request creation and Codex Review are not part of the current completion
+condition.
 
 ## Objective
 
@@ -383,6 +392,27 @@ irreversible runtime effect. Before merge, corrections use additive commits on
 the task branch without rewriting shared history. Abandoning M3 means leaving
 the branch and Pull Request unmerged. A normal revert of the portable-crate and
 status-document commits restores the M2 skeleton without data cleanup.
+
+## Verification record
+
+- The approved `luna_executor` implemented the portable domain, ports,
+  application coordination, deterministic fakes, and acceptance tests in the
+  three existing portable crates only.
+- The approved `sol_verifier` completed successive read-only review rounds.
+  Earlier rounds identified in-scope correlation, recovery, cleanup, cancellation,
+  processing, retry, wire-code, and coverage defects. Those findings were
+  corrected through bounded revised Executor Briefs. The final verdict was
+  `ACCEPT`, with no remaining actionable M3 issue.
+- The final local suite contains 58 portable Rust tests: 14 application workflow
+  tests, 32 core acceptance tests, six core unit tests, and six ports unit tests.
+- Final local validation passed formatting, locked portable-crate check, Clippy
+  with warnings denied, locked portable-crate tests, `cargo deny check`, tracked
+  secret scanning, portable platform-leak scanning, inward dependency-tree
+  inspection, and `git diff --check`.
+- No manifest, lockfile, `THIRD_PARTY_NOTICES.md`, desktop, CI, provider,
+  persistence-adapter, platform-adapter, model, asset, or migration file changed.
+- Windows/macOS/Linux CI is not claimed by this local record and remains the
+  remote branch/PR validation responsibility.
 
 ## Executor Brief
 

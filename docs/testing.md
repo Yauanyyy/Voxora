@@ -2,7 +2,7 @@
 
 ## Status and test philosophy
 
-M2 establishes only build, metadata, static-shell, license-policy, model-manifest-policy, and secret-pattern test baselines. The behavioral obligations below still begin with M3 and must use deterministic fakes before native capture, provider calls, model downloads, or real insertion are introduced. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
+M3 implements the portable lifecycle baseline with deterministic fakes before native capture, provider calls, model downloads, persistence adapters, or real insertion are introduced. The final local suite contains 58 portable Rust tests across application workflow, core acceptance, core unit, and ports unit coverage. Later adapter, frontend, persistence, native, provider, and end-to-end obligations below remain future work. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
 
 ## Portable state and domain tests
 
@@ -93,7 +93,7 @@ Model-manager tests cover user-initiated download cancellation/resume as support
 
 ## CI intent (M2 and later)
 
-M2 implements Windows/macOS/Linux formatting plus common-crate compile/lint/tests; a Windows Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. The portable M2 tests validate package metadata only; they do not claim M3 lifecycle coverage. CI makes no paid provider call and downloads no model weight.
+The existing CI implements Windows/macOS/Linux formatting plus common-crate compile/lint/tests; a Windows Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. M3 now supplies the portable lifecycle suite those common-crate jobs execute. CI makes no paid provider call and downloads no model weight.
 
 ## Test evidence and review
 

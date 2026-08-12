@@ -2,7 +2,7 @@
 
 ## Status and intent
 
-This is the planned architecture for a Windows-first product. M2 establishes the `voice-core`, `voice-ports`, `voice-application`, Tauri composition-root, and React shell boundaries without implementing domain behavior, ports, adapters, or session orchestration. Portable business logic remains independent of Windows and provider APIs.
+This is the architecture for a Windows-first product. M3 implements the portable domain behavior, explicit capability ports, deterministic reducers, and session-scoped application coordination in `voice-core`, `voice-ports`, and `voice-application`. The Tauri composition root and React UI remain the M2 shell, and no provider, persistence, or platform adapter is implemented. Portable business logic remains independent of Windows and provider APIs.
 
 ## Layer responsibilities
 
@@ -78,6 +78,6 @@ Voxora is a local desktop application. It does not require a project-operated se
 
 ## Expected future repository responsibilities
 
-The master plan records the expected crate tree. M2 creates only `voice-core`, `voice-ports`, `voice-application`, and the Tauri/React desktop shell needed for the build boundary. `history-sqlite` will own persistence; provider adapters will own Doubao, OpenAI-compatible processing, and sherpa-onnx integration; `platform-windows` will own native capture, shortcuts, targeting, credentials, and insertion. Those future adapter crates do not exist yet.
+The master plan records the expected crate tree. M3 still uses only `voice-core`, `voice-ports`, `voice-application`, and the existing Tauri/React desktop shell. `history-sqlite` will own persistence; provider adapters will own Doubao, OpenAI-compatible processing, and sherpa-onnx integration; `platform-windows` will own native capture, shortcuts, targeting, credentials, and insertion. Those future adapter crates do not exist yet.
 
 See ADRs [0001](adr/0001-windows-first-portable-core.md), [0002](adr/0002-tauri-rust-react-desktop-stack.md), and [0005](adr/0005-ports-and-adapters.md) for the accepted architectural choices.

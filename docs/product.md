@@ -2,7 +2,7 @@
 
 ## Status and audience
 
-Voxora is a planned Windows-first desktop voice-input application for ordinary Windows users and open-source enthusiasts. This document records the accepted first-release product contract. M2 implements only a buildable Tauri/React workspace shell that explicitly says dictation features are not implemented; it provides no provider integration, platform adapter, persistence, credential handling, model, or voice-input behavior.
+Voxora is a planned Windows-first desktop voice-input application for ordinary Windows users and open-source enthusiasts. This document records the accepted first-release product contract. M3 implements the portable Dictation Session lifecycle, ports, deterministic fakes, and tests, but the Tauri/React desktop remains the M2 not-yet-implemented shell. There is still no real provider integration, platform adapter, persistence adapter, credential handling, model, UI workflow, or usable voice-input behavior.
 
 The user starts a Dictation Session, speaks, and receives Final Text for insertion into an eligible application outside Voxora. If insertion cannot be performed safely, the product preserves the text for manual delivery. Settings are visible without a standard/expert split.
 

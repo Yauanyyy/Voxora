@@ -289,7 +289,7 @@ Acceptance:
 
 ### M3 — Portable domain and session state machine
 
-Task status: approved for implementation on `codex/m3-portable-domain-state-machine`; see [`docs/plans/0005-m3-portable-domain-state-machine.md`](plans/0005-m3-portable-domain-state-machine.md).
+Task status: implemented and locally verified on `codex/m3-portable-domain-state-machine`; the final read-only verifier verdict is `ACCEPT`. Cross-platform CI remains remote evidence before merge. See [`docs/plans/0005-m3-portable-domain-state-machine.md`](plans/0005-m3-portable-domain-state-machine.md).
 
 Objective: prove the complete dictation lifecycle using fakes before any native or provider integration.
 

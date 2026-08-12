@@ -16,4 +16,4 @@ The milestone order, entry gates, acceptance criteria, and completion definition
 | M9 | Windows-first release hardening, packaging, accessibility/privacy/recovery checks, notices, and release guidance. | [Implementation plan — M9](implementation-plan.md#m9--release-hardening) |
 | M10 | Post-first-release candidates: Hotword Candidates, additional models/providers/rules, direct audio export, and non-Windows adapters. | [Implementation plan — M10](implementation-plan.md#m10--post-first-release-candidates) |
 
-Current repository status is the M2 build skeleton: the portable workspace, Tauri/React shell, exact lockfiles, baseline tests, and CI/policy gates exist. M3–M9 product behavior, adapters, persistence, providers, models, packaging, and release claims remain unimplemented.
+Current repository status is M3: the portable domain, capability ports, session state machines, deterministic fakes, and lifecycle tests are implemented and locally verified, while the Tauri/React desktop remains a non-functional shell. M4–M9 persistence, product UX, native adapters, providers, models, packaging, and release claims remain unimplemented.
