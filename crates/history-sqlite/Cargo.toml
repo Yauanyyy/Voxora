@@ -1,0 +1,19 @@
+[package]
+name = "history-sqlite"
+description = "SQLite history, configuration, and audio-artifact adapter for Voxora"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rusqlite = { version = "0.40.2", default-features = false, features = ["backup", "bundled"] }
+voice-core = { path = "../voice-core", version = "=0.1.0" }
+voice-ports = { path = "../voice-ports", version = "=0.1.0" }
+
+[dev-dependencies]
+voice-application = { path = "../voice-application", version = "=0.1.0" }
+
+[lints]
+workspace = true

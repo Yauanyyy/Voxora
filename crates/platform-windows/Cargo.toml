@@ -1,0 +1,19 @@
+[package]
+name = "platform-windows"
+description = "Windows Credential Manager adapter for Voxora"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+voice-core = { path = "../voice-core", version = "=0.1.0" }
+voice-ports = { path = "../voice-ports", version = "=0.1.0" }
+
+[target.'cfg(windows)'.dependencies]
+keyring-core = { version = "=1.0.0", default-features = false }
+windows-native-keyring-store = { version = "=1.1.0", default-features = false }
+
+[lints]
+workspace = true

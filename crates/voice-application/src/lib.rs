@@ -16,6 +16,9 @@ use voice_ports::{
     TargetResolverPort, TargetValidatorPort, TextInjectorPort, TextProcessorPort,
 };
 
+mod configuration;
+pub use configuration::*;
+
 pub struct ApplicationPorts {
     pub audio: Box<dyn AudioCapturePort>,
     pub shortcuts: Box<dyn ShortcutPort>,

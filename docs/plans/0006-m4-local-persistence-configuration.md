@@ -2,10 +2,11 @@
 
 ## Status
 
-Approved for implementation on branch
-`codex/m4-local-persistence-configuration`. The primary agent owns this plan,
-the final Executor Brief, product and architecture interpretation, dependency
-review, verification, status documentation, Git integration, and Pull Request.
+Implemented and locally verified on branch
+`codex/m4-local-persistence-configuration`. The final read-only verifier verdict
+is `ACCEPT`. Remote Windows/macOS/Linux CI remains required evidence before
+merge. The primary agent owns product and architecture interpretation,
+dependency review, status documentation, Git integration, and Pull Request.
 
 The implementation is limited to M4. It adds no desktop settings/history UI,
 Tauri commands, capture, global shortcut registration, target resolution,
@@ -384,7 +385,33 @@ user command and never enumerates or deletes unrelated Credential Manager data.
 
 ## Verification record
 
-Pending implementation and read-only verification.
+Implementation completed within M4 scope and received final read-only verifier
+verdict `ACCEPT` after all findings were resolved. Local validation on Windows
+with Rust 1.97.1 passed:
+
+```text
+cargo fmt --all -- --check
+cargo check --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets
+cargo clippy --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets --all-features -- -D warnings
+cargo test --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets
+cargo check --locked -p platform-windows --all-targets
+cargo clippy --locked -p platform-windows --all-targets --all-features -- -D warnings
+cargo test --locked -p platform-windows --all-targets
+cargo check --locked -p voxora-desktop --all-targets
+cargo deny check
+node --test scripts/check-tracked-secrets.test.mjs
+node scripts/check-tracked-secrets.mjs
+git diff --check
+```
+
+The Rust test matrix passed 93 tests, including 22 SQLite integration tests and
+three Windows credential-adapter tests with a real synthetic Credential Manager
+write/read/delete round trip. `cargo deny 0.20.2` reported advisories, bans,
+licenses, and sources all `ok`; the secret scanner checked 97 tracked and
+untracked source files. Dependency-feature and portable-boundary inspection
+confirmed bundled SQLite only, target-scoped Windows credentials, no inward
+adapter leakage, and no Voxora-authored unsafe code. Remote cross-platform CI
+is not claimed locally and remains pending Pull Request evidence.
 
 ## Executor Brief
 

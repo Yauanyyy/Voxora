@@ -24,7 +24,16 @@ jobs:
           cache-dependency-path: apps/desktop/package-lock.json
 
       - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.97.1 --profile minimal
+        run: rustup toolchain install 1.97.1 --profile minimal --component clippy
+
+      - name: Check Windows credential adapter
+        run: cargo +1.97.1 check --locked -p platform-windows --all-targets
+
+      - name: Lint Windows credential adapter
+        run: cargo +1.97.1 clippy --locked -p platform-windows --all-targets --all-features -- -D warnings
+
+      - name: Test Windows credential adapter
+        run: cargo +1.97.1 test --locked -p platform-windows --all-targets
 
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts

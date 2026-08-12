@@ -5,11 +5,14 @@ members = [
     "crates/voice-application",
     "crates/voice-core",
     "crates/voice-ports",
+    "crates/history-sqlite",
+    "crates/platform-windows",
 ]
 default-members = [
     "crates/voice-application",
     "crates/voice-core",
     "crates/voice-ports",
+    "crates/history-sqlite",
 ]
 
 [workspace.package]
