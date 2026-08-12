@@ -122,6 +122,69 @@ The primary agent sends only the approved Executor Brief to `luna_executor`, tog
 
 Do not run two execution agents with overlapping files or responsibilities. Parallel work is allowed only when ownership and validation are independent.
 
+### Parallel execution
+
+Parallel execution is a scheduling mode inside this lifecycle, not permission to
+skip planning, ownership, verification, or Git controls. When a task plan
+authorizes parallel work, the primary agent must additionally define:
+
+- a stable baseline and any contract/readiness gate that must pass before fan-out;
+- independently verifiable workstreams and slices rather than assuming existing
+  Milestone or agent boundaries are safe to reuse;
+- exact exclusive files and responsibilities for every active executor;
+- a shared-file lane for contracts, lockfiles, workspace manifests, notices, CI,
+  authoritative documentation, and production composition roots;
+- workstream entry, waiting, blocked, acceptance, and integration conditions;
+- which checks are safe during concurrent writes and which require a quiescent
+  repository checkpoint;
+- a later integration owner and cross-workstream verification scope.
+
+Parallel does not mean simultaneous completion. A workstream waiting on an
+external protocol, platform environment, dependency review, or model gate does
+not stop independent workstreams. It also must not broaden its scope, edit
+another workstream's files, or claim completion while waiting.
+
+The primary agent may instantiate planning, execution, and verification agents
+per bounded slice. Earlier agent counts, permanent Milestone assignments, and
+serial call relationships are not reusable defaults. `sol_planner` remains a
+read-only advisor, every `luna_executor` still requires a primary-authored brief,
+and every `sol_verifier` remains read-only.
+
+#### Frozen contracts and shared changes
+
+When parallel slices consume common ports, events, DTOs, schemas, manifests, or
+composition boundaries, the primary agent freezes an explicit baseline before
+fan-out. An executor that discovers an insufficient shared contract stops the
+affected work and reports a change request; it does not extend the contract
+incidentally.
+
+The primary agent evaluates the impact, resolves any material decision, and, if
+approved, authors a separate shared-change brief. Shared changes are serialized
+under one exclusive owner while affected writers are quiescent. After scoped
+verification, the primary agent records the new baseline and tells every
+affected workstream whether to resume, revise, or remain waiting.
+
+#### Slice acceptance and integration
+
+A parallel slice is accepted only after its executor handoff, required scoped
+validation, read-only verifier `ACCEPT`, and primary scope/policy review. Slice
+acceptance proves only the bounded brief against the named baseline. It does not
+prove production composition, complete a Milestone, or authorize another
+workstream's scope.
+
+When a plan selects stage-end centralized integration, accepted leaf slices do
+not modify the real production composition root by default. The primary agent
+later authors an independent Integration plan with exclusive ownership of real
+adapter selection, wiring, shared manifests, and combined validation. A
+controlled early integration check is allowed only through a separate
+primary-approved brief when a named risk cannot be tested adequately through
+contracts or fakes; it remains an exception and cannot establish completion.
+
+Waiting, blocked, slice-accepted, and integration-ready states are not synonyms
+for task or Milestone completion. Completion requires the original acceptance
+criteria, applicable integrated behavior, required environment evidence, final
+verification, and primary status review.
+
 ### 4. Execute
 
 The execution agent:

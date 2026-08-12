@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-This is Voxora's authoritative delivery plan. It converts the accepted product decisions into ordered, testable milestones and protects the dependency, privacy, licensing, and recovery constraints throughout implementation.
+This is Voxora's authoritative delivery plan. It converts the accepted product decisions into gated, testable milestones and protects the dependency, privacy, licensing, and recovery constraints throughout implementation. Milestone numbering records scope and acceptance; it does not by itself require serial execution where an explicit parallel phase is defined.
 
 The primary agent owns this plan and all task-level executor briefs. Execution agents implement only an approved bounded brief. Verification agents review the result without editing. Product code must not begin for a milestone until its entry conditions and brief are satisfied.
 
@@ -225,11 +225,30 @@ Every milestone and material task follows `docs/runbooks/agent-execution.md`:
 
 1. The primary agent reads current facts and writes a task plan or Executor Brief under `docs/plans/`.
 2. The brief defines ownership, constraints, exact acceptance criteria, validation, and non-goals.
-3. An execution subagent implements only that brief and reports evidence.
-4. A read-only verification subagent checks the implementation against the brief, architecture, tests, security, privacy, and licensing requirements.
+3. One or more execution subagents implement only their independently owned approved briefs and report evidence. Parallel executors are allowed only when files, responsibilities, and validation are independent.
+4. Read-only verification subagents check each bounded result against its brief, architecture, tests, security, privacy, and licensing requirements; an additional integration verifier checks combined behavior when a plan uses multiple workstreams.
 5. The primary agent resolves findings, updates the plan, validates the final diff, and performs the allowed Git workflow.
 
 The primary agent does not delegate unresolved product decisions. Execution agents do not redesign the architecture.
+
+For M5-M8, the authoritative orchestration is
+[`docs/plans/0007-m5-m8-parallel-agent-orchestration.md`](plans/0007-m5-m8-parallel-agent-orchestration.md).
+After a primary-owned parallel-readiness gate freezes shared contracts, M5, M6,
+M7, and M8 proceed as independently scheduled workstreams rather than as a
+mandatory M5-then-M6-then-M7-then-M8 implementation chain. Parallel execution
+does not require simultaneous start or finish. A gated, protocol-waiting, or
+Windows-debugging workstream does not stop independent workstreams, cannot cross
+scope to remain busy, and cannot claim its Milestone complete.
+
+Workstream slices may receive scoped verification and be recorded as accepted
+without modifying the real production composition root. Shared contracts,
+workspace/lock/notice/CI files, authoritative documentation, and production
+composition are serialized through a primary-controlled shared-change lane. The
+default is a separate stage-end Integration plan that owns real adapter wiring
+and combined verification. A primary-approved early integration check is an
+exception for a specific risk that cannot be proven through frozen contracts,
+contract tests, or fakes; it does not establish production Integration or
+Milestone completion.
 
 ## Milestones
 
@@ -350,7 +369,12 @@ Acceptance:
 
 ### M5 — Desktop UX with fake adapters
 
-Objective: validate the complete user journey before adding native capture, provider calls, or real injection.
+Parallel phase: desktop UX workstream. It may progress independently after the
+M5-M8 readiness gate and consumes the frozen desktop/application contract. Its
+accepted slices do not select production M6-M8 adapters or establish Milestone
+completion before centralized Integration and final acceptance review.
+
+Objective: validate the complete user journey against frozen fake-adapter contracts independently of native capture, provider calls, or real injection.
 
 Deliverables:
 
@@ -374,7 +398,12 @@ Acceptance:
 
 ### M6 — Windows audio, shortcuts, targeting, and insertion
 
-Objective: replace fake platform behavior with safe Windows adapters.
+Parallel phase: Windows platform workstream. Windows-only debug or environment
+waiting does not pause M5, M7, or M8. M6 executors own only approved platform
+adapter slices and do not edit React, provider/local-ASR code, frozen portable
+contracts, or production composition.
+
+Objective: implement safe Windows adapters that replace fake platform behavior only during the later centralized Integration stage.
 
 Deliverables:
 
@@ -396,6 +425,11 @@ Acceptance:
 - all Windows types remain inside `platform-windows`.
 
 ### M7 — Doubao ASR and OpenAI-compatible processing
+
+Parallel phase: cloud capability workstream. Doubao and OpenAI-compatible slices
+may proceed independently when their ownership and external facts are distinct.
+An unresolved provider protocol blocks only the affected slice and never
+authorizes guessed protocol fields, scope expansion, or a completion claim.
 
 Objective: add the first cloud recognition and optional LLM adapters after documentation and license review.
 
@@ -420,6 +454,11 @@ Acceptance:
 - LLM failure falls back to Raw Transcript and records only sanitized failure details.
 
 ### M8 — Local ASR and model manager
+
+Parallel phase: local ASR/model workstream. Before its entry gate passes, it may
+perform only the exact framework/model provenance, license, redistribution,
+manifest, and notice review authorized by a bounded brief. An incomplete gate
+blocks M8 product implementation without pausing M5-M7.
 
 Objective: provide CPU-capable offline recognition with reviewed artifacts.
 
@@ -538,7 +577,7 @@ Not part of first-release acceptance:
 Voxora's first release is complete only when:
 
 - accepted product behavior is implemented without unresolved documentation conflict;
-- every milestone acceptance condition through M9 is satisfied or explicitly removed by the user;
+- every milestone acceptance condition through M9 is satisfied or explicitly removed by the user; accepted M5-M8 slices, waiting/blocked workstreams, or unintegrated adapters do not satisfy this condition;
 - required CI passes;
 - dependency and model notices are complete;
 - credentials, private content, and full sensitive paths are absent from logs and tracked fixtures;
