@@ -373,6 +373,11 @@ Parallel phase: desktop UX workstream. It may progress independently after the
 M5-M8 readiness gate and consumes the frozen desktop/application contract. Its
 accepted slices do not select production M6-M8 adapters or establish Milestone
 completion before centralized Integration and final acceptance review.
+M5 may implement the fake-only Tauri command/event boundary, DTO mappings, fake
+adapter composition, and tests required for its complete fake workflow. Selecting
+real M6-M8 adapters, replacing those fakes, and performing cross-workstream
+production wiring remain exclusive responsibilities of the later Integration
+stage.
 
 Objective: validate the complete user journey against frozen fake-adapter contracts independently of native capture, provider calls, or real injection.
 

@@ -48,7 +48,8 @@ Milestone complete.
 - The parallel-readiness gate and frozen-contract baseline.
 - Workstream, slice, shared-file, and Integration-stage ownership.
 - Agent instantiation and scheduling rules.
-- Project subagent concurrency capacity for the four M5-M8 workstreams.
+- Project subagent concurrency capacity for the four M5-M8 workstreams with
+  additional scheduling headroom where the effective runtime limit permits it.
 - Shared-contract and shared-file change control.
 - Workstream states, gates, handoffs, verification, and completion semantics.
 - Stage-end centralized Integration with a narrowly controlled early integration
@@ -86,8 +87,9 @@ Milestone complete.
    may accumulate as scoped commits on the task branch without wiring real
    adapters into the production composition root.
 7. **Integration is a separate stage.** Real adapter selection, cross-module
-   wiring, Tauri command/event registration, and combined behavior are performed
-   only by an Integration Executor Brief after the Integration entry gate.
+   wiring, production Tauri command/event registration and mappings that replace
+   or extend the M5 fake-only boundary, and combined behavior are performed only
+   by an Integration Executor Brief after the Integration entry gate.
 8. **Verification is layered.** Slice acceptance proves the bounded brief and
    frozen contracts. It does not prove combined product behavior or complete a
    Milestone.
@@ -125,15 +127,16 @@ The primary agent may run fewer workstreams than available concurrency slots,
 pause one workstream, or reuse an idle agent for a later non-overlapping slice.
 No plan may require four execution agents to be active at the same instant.
 
-The project sets `agents.max_concurrent_threads_per_session = 4`. Codex defines
-this limit as spawned-agent threads excluding the primary agent, so it permits
-one concurrent subagent for each of M5, M6, M7, and M8 when all four workstreams
-are independently ready. The value is a capacity ceiling, not a requirement to
-spawn four agents or keep them alive throughout the phase. When all four slots
-are occupied, a planning, shared-change, or verification agent waits for an
-executor to become quiescent and release a slot, or the primary pauses an
-appropriate workstream; the plan does not depend on an unconfigured fifth
-subagent.
+The project sets `agents.max_concurrent_threads_per_session = 5`. This is a
+capacity ceiling, not a requirement to spawn five agents or keep them alive
+throughout the phase, and the effective Codex runtime or service may enforce a
+lower concurrent limit. Scheduling prioritizes at most one active executor for
+each independently ready M5-M8 workstream. Any remaining effective capacity may
+run a bounded planning, verification, or serialized shared-change task; otherwise
+that task waits for a workstream agent to become quiescent or for the primary to
+pause an appropriate writer. The configured fifth thread does not create a fifth
+product workstream, weaken exclusive ownership, or allow a verifier to inspect
+files while its owning executor is still writing them.
 
 ## Parallel-readiness gate
 
@@ -178,15 +181,23 @@ Owns:
 
 - React views, reducers/view models, interaction behavior, styles, and frontend
   tests for settings, history, Recording Overlay, Result Panel, and fake flows;
-- frontend-only fake transport or test harnesses that implement the frozen
-  desktop contract without selecting production adapters;
+- the fake-only Tauri command/event boundary, portable DTO mappings, fake adapter
+  composition, test/dev registration, and associated Rust/frontend contract
+  tests when exact desktop files are assigned by its later Executor Brief;
+- frontend fake transport or test harnesses that implement the frozen desktop
+  contract without selecting production M6-M8 adapters;
 - rendered visual evidence with sensitive content excluded.
 
 Does not own:
 
 - Rust session orchestration, portable state transitions, Windows/provider
-  adapters, production Tauri adapter selection, root Tauri entry points, shared
-  DTO definitions, or real composition-root wiring.
+  adapters, production Tauri adapter selection, provider- or Windows-specific
+  DTO definitions, or real production-adapter composition-root wiring.
+
+M5 may implement and run the complete fake-only Tauri boundary needed by its
+Milestone. This is not production Integration: selecting M6-M8 adapters,
+replacing fakes with real implementations, and wiring cross-workstream runtime
+configuration remain exclusive Integration-stage responsibilities.
 
 M5 may split into sequential or non-overlapping slices such as desktop state and
 transport contract, settings/history surfaces, overlay/Result Panel behavior,
@@ -266,7 +277,9 @@ The following are shared by default:
 - `THIRD_PARTY_NOTICES.md`, common dependency/model review indexes, and shared CI;
 - Tauri manifests, capabilities, window/tray configuration, root command/event
   registration, `src-tauri/src/lib.rs`, `src-tauri/src/main.rs`, and the real
-  production composition root;
+  production composition root, except for exact fake-only boundary and desktop
+  files explicitly assigned to an M5 slice; production adapter selection and
+  real cross-workstream wiring always remain shared Integration ownership;
 - authoritative product, architecture, state-machine, testing, implementation,
   roadmap, runbook, and status documentation.
 
@@ -367,7 +380,8 @@ decision. The primary agent cannot silently redefine completion to avoid a gate.
 The primary-authored Integration plan owns:
 
 - production Tauri composition-root changes and adapter selection;
-- command/event registration and frontend-to-application mappings;
+- production command/event registration and frontend-to-application mappings
+  that select real adapters or replace/extend the M5 fake-only boundary;
 - cross-module configuration and credential resolution;
 - real capture-to-recognition-to-processing-to-delivery wiring;
 - selection between cloud and local Recognition Configurations without automatic
@@ -473,8 +487,12 @@ The primary agent must also inspect the complete documentation diff and confirm:
   parallel-readiness gate and one later centralized Integration stage.
 - The plan contains no requirement that all four workstreams be active or finish
   simultaneously.
-- Project configuration permits four spawned subagents concurrently, excluding
-  the primary, without treating that capacity as a mandatory fixed topology.
+- Project configuration caps spawned subagents at five, while scheduling remains
+  valid under a lower effective runtime limit and never treats extra capacity as
+  a mandatory fifth product workstream.
+- M5 explicitly owns an approved fake-only Tauri command/event boundary while
+  production adapter selection and cross-workstream wiring remain Integration
+  ownership.
 - Each workstream has explicit responsibilities and prohibited scope.
 - Shared contracts/files have one serialized change protocol and cannot be edited
   incidentally by leaf executors.
