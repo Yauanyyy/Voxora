@@ -295,7 +295,7 @@ fn capture_stop_rejects_stale_duplicate_and_wrong_mode_without_mutation() {
 }
 
 #[test]
-fn capture_failure_preserves_nonempty_audio_but_empty_capture_has_no_recognition_effect() {
+fn capture_failure_best_effort_audio_is_retained_and_missing_audio_is_valid() {
     let state = started();
     let session = state.session().unwrap();
     let correlation = LiveCorrelation::new(
@@ -324,6 +324,29 @@ fn capture_failure_preserves_nonempty_audio_but_empty_capture_has_no_recognition
     );
     assert!(
         !audio_failure
+            .effects()
+            .iter()
+            .any(|effect| matches!(effect, LiveEffect::StartRecognition { .. }))
+    );
+
+    let missing_audio = reduce_live(
+        &state,
+        LiveInput::Event(LiveEvent::CaptureFailed {
+            correlation,
+            audio: None,
+        }),
+    );
+    let missing_session = missing_audio.state().session().unwrap();
+    assert_eq!(missing_session.outcome(), Some(TerminalOutcome::Failed));
+    assert!(missing_session.audio().is_none());
+    assert!(
+        !missing_session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
+    );
+    assert!(
+        !missing_audio
             .effects()
             .iter()
             .any(|effect| matches!(effect, LiveEffect::StartRecognition { .. }))
@@ -417,6 +440,13 @@ fn live_recognition_empty_cancellation_and_late_partial_are_correlated() {
         let transition = reduce_live(&state, LiveInput::Event(event));
         let session = transition.state().session().unwrap();
         assert_eq!(session.outcome(), Some(TerminalOutcome::Failed));
+        assert!(session.audio().is_some());
+        assert!(
+            session
+                .materials()
+                .state(MaterialKind::RecordedAudio)
+                .available()
+        );
         assert!(transition.effects().iter().any(|effect| matches!(
             effect,
             LiveEffect::Cancel(effect_token) if *effect_token == token
@@ -483,6 +513,13 @@ fn partial_is_cleared_after_final_and_retained_on_timeout() {
     );
     let session = failed.state().session().unwrap();
     assert_eq!(session.outcome(), Some(TerminalOutcome::Failed));
+    assert!(session.audio().is_some());
+    assert!(
+        session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
+    );
     assert!(session.partial().is_some());
     assert!(
         session
@@ -716,10 +753,21 @@ fn definite_insertion_failure_uses_panel_then_clipboard_and_both_fail() {
         terminal.state().session().unwrap().outcome(),
         Some(TerminalOutcome::Failed)
     );
+    assert!(terminal.state().session().unwrap().audio().is_some());
+    assert!(
+        terminal
+            .state()
+            .session()
+            .unwrap()
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
+    );
     assert!(terminal.state().session().unwrap().final_text().is_some());
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn manual_panel_success_and_clipboard_success_preserve_exact_delivery_materials() {
     let (delivering, insertion) = delivering_with_insertion();
     let failed = reduce_live(
@@ -745,6 +793,13 @@ fn manual_panel_success_and_clipboard_success_preserve_exact_delivery_materials(
     assert_eq!(
         panel_session.outcome(),
         Some(TerminalOutcome::ManualDeliveryRequired)
+    );
+    assert!(panel_session.audio().is_some());
+    assert!(
+        panel_session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
     );
     assert!(
         panel_session
@@ -797,6 +852,13 @@ fn manual_panel_success_and_clipboard_success_preserve_exact_delivery_materials(
     assert_eq!(
         clipboard_session.outcome(),
         Some(TerminalOutcome::ManualDeliveryRequired)
+    );
+    assert!(clipboard_session.audio().is_some());
+    assert!(
+        clipboard_session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
     );
     assert!(
         clipboard_session
@@ -1347,6 +1409,7 @@ fn recovery_payload_refreshes_after_manual_preservation() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn failure_metadata_survives_target_fallback_and_processing_fallback_delivery() {
     let recognizing_state = recognizing(&started());
     let target_operation = target_correlation(&recognizing_state);
@@ -1443,6 +1506,13 @@ fn failure_metadata_survives_target_fallback_and_processing_fallback_delivery() 
         session.failure().unwrap().code(),
         FailureCode::ProcessingStep
     );
+    assert!(session.audio().is_some());
+    assert!(
+        session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
+    );
     assert!(session.warnings().contains(&Warning::ProcessingFallback));
 }
 
@@ -1500,6 +1570,13 @@ fn processing_timeout_falls_back_to_raw_and_cancels_remaining_work_first() {
     assert_eq!(
         session.failure().unwrap().code(),
         FailureCode::ProcessingTimeout
+    );
+    assert!(session.audio().is_some());
+    assert!(
+        session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
     );
 }
 
@@ -1568,6 +1645,7 @@ fn processing_success_advances_revision_and_rejects_late_failure_without_mutatio
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn persistence_callbacks_are_one_shot_and_recovery_failure_stays_retryable() {
     let state = recognizing(&started());
     let failed = reduce_live(
@@ -1603,6 +1681,14 @@ fn persistence_callbacks_are_one_shot_and_recovery_failure_stays_retryable() {
         .unwrap()
         .recovery()
         .unwrap();
+    assert!(recovery.record().recorded_audio().is_some());
+    assert!(
+        recovery
+            .record()
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
+    );
     let retryable = reduce_live(
         persistence_failed.state(),
         LiveInput::Event(LiveEvent::RecoveryPersistenceFailed(

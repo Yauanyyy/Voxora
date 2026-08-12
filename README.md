@@ -11,7 +11,9 @@ M3 now implements and locally verifies the portable Dictation Session domain, co
 The first release is planned for ordinary Windows users and open-source enthusiasts. Its documented scope includes:
 
 - Push-to-Talk and Toggle recording with one active Dictation Session;
-- user-selected local or cloud recognition, with preserved audio and recovery material on failure;
+- user-selected local or cloud recognition, with Recorded Audio retained after a
+  successfully completed capture even when later work fails; capture-boundary
+  failures retain only any partial audio actually supplied by the adapter;
 - configurable built-in text rules and an optional global, stateless, non-streaming LLM step;
 - Prompt Presets, a global Hotword Library, and executable-identity Application Profiles;
 - safe target resolution, clipboard paste with a SendInput fallback, and a non-focus-stealing Result Panel when automatic insertion is unsafe;
@@ -63,7 +65,7 @@ The desktop build command is Windows-only in the current workspace. M3 adds no d
 
 ## Privacy and recovery posture
 
-Audio, transcripts, Prompts, Hotwords, application identities, and history are sensitive local data. Cloud credentials are planned for the Windows credential store, never ordinary SQLite, JSON, logs, fixtures, crash reports, exports, or plaintext backups. Logs use sanitized stages and codes rather than complete sensitive content. SQLite transcript/history storage is not promised to be encrypted at rest; the product will disclose reliance on per-user filesystem protection. Failed sessions are designed to preserve recorded material through recovery records, subject to the documented retention and deletion rules.
+Audio, transcripts, Prompts, Hotwords, application identities, and history are sensitive local data. Cloud credentials are planned for the Windows credential store, never ordinary SQLite, JSON, logs, fixtures, crash reports, exports, or plaintext backups. Logs use sanitized stages and codes rather than complete sensitive content. SQLite transcript/history storage is not promised to be encrypted at rest; the product will disclose reliance on per-user filesystem protection. After capture successfully completes with usable Recorded Audio, later recognition, processing, delivery, and persistence failures preserve that audio through recovery records, subject to retention and deletion rules. Capture start/stop/end failures provide only best-effort partial-audio recovery: missing partial audio is valid, while any nonempty audio supplied by the adapter is retained.
 
 ## Contributing and provenance
 

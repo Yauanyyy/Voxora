@@ -40,8 +40,14 @@ The project does not operate or require a public server. It has no account syste
 
 - Cloud ASR and LLM credentials use Windows Credential Manager and never ordinary SQLite, JSON, logs, fixtures, crash reports, or plaintext backups.
 - Logs contain no complete Prompt, transcript, audio, provider response, credential-bearing URL, or complete private filesystem path.
-- No failure silently loses recorded audio, available transcript text, or Final Text.
-- Successful history follows user text/audio history settings. Failed sessions create recovery records so recorded material remains available until deletion or retention expiry.
+- Once capture successfully completes with usable Recorded Audio, later recognition,
+  processing, delivery, and persistence failures do not silently lose that audio.
+  Capture start/stop/end failures have only best-effort partial-audio recovery:
+  missing partial audio is valid, while any nonempty audio supplied by the adapter
+  is retained. Available transcript text and Final Text keep their existing no-loss
+  guarantees.
+- Successful history follows user text/audio history settings. Later failures create
+  recovery records for retained material until deletion or retention expiry.
 - Orphaned temporary audio after a crash is deleted on the next normal startup; crash recovery is not a product guarantee.
 - SQLite transcript/history content is not promised to be encrypted at rest; the product must disclose reliance on per-user filesystem protection.
 
@@ -108,7 +114,7 @@ The project does not operate or require a public server. It has no account syste
 - Modifier-only bindings are supported with explicit conflict handling and never suppress arbitrary OS input.
 - Only one Dictation Session may be active at a time.
 - Esc during capture cancels intentionally, deletes audio, and creates no history.
-- Esc after capture stops remaining work but preserves recorded audio and available results in history.
+- Esc after capture stops remaining work but preserves Recorded Audio and available results in history. The strong audio guarantee begins only after capture successfully ends with usable audio; capture-boundary failure recovery is best effort.
 - The Recording Overlay is not focusable and never an insertion target. During capture it shows elapsed seconds, input amplitude, low-volume warning, and time-limit warnings. After capture it shows only a generic processing state. Failure details are not displayed there.
 - Low-volume detection only warns; it never pauses or ends recording.
 - Time-limit UI warns with 30 seconds remaining and displays a final ten-second countdown.
@@ -132,7 +138,7 @@ The project does not operate or require a public server. It has no account syste
 - A unified Dictation Record relates audio, recognition attempts, Raw Transcript, Processed Text, Final Text, status, and sanitized failure information.
 - Text history and audio history are independently configurable, both default-on with a default 30-day retention period.
 - Retention periods are user-adjustable.
-- Failed sessions create recovery records even when ordinary history is disabled, so failures do not silently discard recorded material.
+- Sessions with usable audio that fail after successful capture create recovery records even when ordinary history is disabled. Capture-boundary failures retain only any partial audio actually supplied by the adapter; missing partial audio is valid.
 - Users can play stored audio, delete it, and retry recognition with another configuration. Direct audio export is post-first-release.
 - Users can delete one record or all records.
 
@@ -336,7 +342,7 @@ Acceptance:
 - built-in prompts cannot be edited/deleted and copies do not inherit shortcuts;
 - deleting a referenced Custom Prompt Preset requires confirmation and resets affected Application Profiles to follow the global Active Prompt Preset;
 - deletion and retention remove associated artifacts consistently;
-- failed sessions remain recoverable according to policy;
+- failures after successful capture retain usable Recorded Audio according to policy, while capture-boundary failures recover only any partial audio supplied by the adapter;
 - orphan temporary audio cleanup is tested;
 - history records raw and final text independently.
 
@@ -534,7 +540,7 @@ Voxora's first release is complete only when:
 - required CI passes;
 - dependency and model notices are complete;
 - credentials, private content, and full sensitive paths are absent from logs and tracked fixtures;
-- failure paths preserve audio or text according to policy;
+- failure paths preserve Recorded Audio after successful capture, and preserve available text according to policy; capture-boundary audio recovery remains best effort;
 - the Windows package is tested and residual limitations are documented;
 - a Ready for review PR exists when a remote is available;
 - the user, not Codex, decides and performs the merge.

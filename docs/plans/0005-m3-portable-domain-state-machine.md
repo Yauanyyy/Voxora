@@ -3,6 +3,10 @@
 ## Status
 
 Implemented and verified on branch `codex/m3-portable-domain-state-machine`.
+This follow-up amends the M3 audio-retention boundary after an explicit user
+decision: successful capture establishes a strong Recorded Audio preservation
+guarantee for later failures, while capture start/stop/end failure permits only
+best-effort recovery of any partial audio the adapter actually makes available.
 The primary agent owns this plan, the final Executor Brief, review-finding
 classification, validation, Git integration, and Pull Request handling. A
 `sol_planner` subagent supplied read-only evidence and design advice; the
@@ -13,9 +17,9 @@ tests. It adds no dependency, adapter, native integration, model, asset,
 migration, network destination, UI behavior, lockfile change, or notice change.
 Cross-platform CI remains the remote evidence gate; the verification record
 below describes the completed local and read-only-agent checks.
-The user later limited this run's Git integration endpoint to commit and push;
-Pull Request creation and Codex Review are not part of the current completion
-condition.
+Pull Request #3 remains open for this branch. This amendment is integrated by
+additive commit and push only; it does not authorize review-thread resolution,
+a new Codex Review request, or merge.
 
 ## Objective
 
@@ -80,6 +84,13 @@ The primary agent resolves the planning questions as follows:
    receive portable request/result shapes and scripted fakes only. Real storage,
    retention, model policy, shortcut registration, and platform behavior belong
    to later milestones.
+8. The strong Recorded Audio preservation guarantee begins only after capture
+   successfully completes with usable audio. Recognition, processing, delivery,
+   and persistence failures must retain that audio. Capture start, stop, or end
+   failure may retain a partial `RecordedAudio` when one is actually available,
+   but recovery is best effort and absence is valid. `AudioCapturePort::stop`
+   remains a simple `PortResult<()>`; M3 does not complicate the port solely to
+   require salvage of partial audio after a capture-boundary failure.
 
 ## In scope
 
@@ -228,9 +239,14 @@ allowed in M3.
 - Maximum duration stops capture, records a warning, and continues recognition.
 - Esc during capture cancels and discards audio, selects `Cancelled`, creates no
   history/recovery effect, and advances correlation before cancellation.
-- Capture failure preserves actual nonempty audio if present. Empty audio is
-  `Failed`, makes no recognition request, and creates no zero-length Recovery
-  Artifact.
+- Capture start, stop, or end failure selects `Failed` and preserves actual
+  nonempty audio only when the adapter can provide it best effort. Missing
+  partial audio is valid and does not require a more complex capture-port
+  contract. Empty audio makes no recognition request and creates no zero-length
+  Recovery Artifact.
+- Once capture successfully completes with usable Recorded Audio, recognition,
+  processing, delivery, and persistence failures must retain it as available
+  material; only durability remains dependent on persistence.
 
 ### Recognition and retry
 
@@ -317,8 +333,11 @@ including:
 
 - PTT and Toggle starts/stops, wrong-mode/stale/duplicate stops, competing starts,
   one-live-work enforcement, and maximum duration;
-- capture failure, empty audio, capture-time Esc deletion/no-history, post-capture
+- capture start/stop/end failure with both available and unavailable best-effort
+  partial audio, empty audio, capture-time Esc deletion/no-history, post-capture
   Esc preservation, and Esc after irreversible delivery;
+- Recorded Audio preservation after successful capture across recognition,
+  processing, delivery, and persistence failures;
 - matching/stale partials, final, empty, timeout, provider failure, internal
   cancellation, cancellation tokens, revisions, and late callbacks;
 - ordered processing, disabled/unavailable LLM skip, step success, local/LLM
@@ -375,6 +394,9 @@ final Windows/macOS/Linux runner evidence.
   insertion never rolls back or automatically retries.
 - Persistence failure loses no available material, invents no sixth outcome, and
   supports separately correlated later recovery success.
+- Capture failure may have no recoverable partial audio, but any partial audio
+  actually supplied is preserved. After successful capture, every later failure
+  retains Recorded Audio as available material.
 - History retry appends only a fresh Recognition Attempt, preserves the original
   terminal session, and has no processing/target/delivery side effects.
 - All listed capability ports and reusable deterministic fakes exist while all
@@ -398,13 +420,18 @@ status-document commits restores the M2 skeleton without data cleanup.
 - The approved `luna_executor` implemented the portable domain, ports,
   application coordination, deterministic fakes, and acceptance tests in the
   three existing portable crates only.
-- The approved `sol_verifier` completed successive read-only review rounds.
+- The approved `sol_verifier` completed successive read-only review rounds for
+  the original M3 implementation. Its first audio-retention amendment review
+  identified one low-severity testing-guide ambiguity that could have implied a
+  more complex capture port; the wording was corrected, and the final amendment
+  verdict was `ACCEPT` with no remaining actionable finding.
   Earlier rounds identified in-scope correlation, recovery, cleanup, cancellation,
   processing, retry, wire-code, and coverage defects. Those findings were
   corrected through bounded revised Executor Briefs. The final verdict was
   `ACCEPT`, with no remaining actionable M3 issue.
-- The final local suite contains 58 portable Rust tests: 14 application workflow
-  tests, 32 core acceptance tests, six core unit tests, and six ports unit tests.
+- The amended local suite contains 59 portable Rust tests: 15 application
+  workflow tests, 32 core acceptance tests, six core unit tests, and six ports
+  unit tests.
 - Final local validation passed formatting, locked portable-crate check, Clippy
   with warnings denied, locked portable-crate tests, `cargo deny check`, tracked
   secret scanning, portable platform-leak scanning, inward dependency-tree
@@ -463,3 +490,38 @@ Run every validation command in this plan and report changed files, exact result
 acceptance coverage, remaining risks, and anything unverified. Stop on an
 authoritative conflict or any need for an external dependency. Do not commit,
 push, publish, open or merge a Pull Request.
+
+### Audio-retention policy amendment brief
+
+Apply the user-approved M3 audio-retention amendment without changing production
+behavior or complicating `AudioCapturePort`. You own the bounded documentation
+and test changes in `AGENTS.md`, `README.md`, `docs/implementation-plan.md`,
+`docs/product.md`, `docs/architecture.md`, `docs/state-machine.md`,
+`docs/testing.md`, `crates/voice-core/tests/m3_acceptance.rs`, and
+`crates/voice-application/tests/m3_workflow.rs`. The primary agent retains
+ownership of this plan's final status and verification record. You are not alone
+in the repository: preserve unrelated work and do not edit manifests, lockfiles,
+notices, production Rust source, desktop, CI, adapters, ADRs, models, or assets.
+
+Make every authoritative source state the same boundary: once capture has
+successfully completed with usable Recorded Audio, any later recognition,
+processing, delivery, or persistence failure must retain it. If capture itself
+fails, including start, stop, or end failure, partial audio recovery is best
+effort; absence is valid, while any nonempty `RecordedAudio` actually supplied by
+the adapter is retained. Transcript and Final Text preservation guarantees remain
+unchanged. Keep `AudioCapturePort::stop -> PortResult<()>` and the existing
+application stop-failure mapping unchanged.
+
+Update the capture-failure core test to prove both `Some(audio)` best-effort
+preservation and valid `None`. Add an application regression test in which the
+audio stop port fails and assert terminal capture failure, no Recorded Audio,
+no recognition start, and released live-work guard. Add explicit Recorded Audio
+availability assertions to representative recognition, processing, delivery,
+and persistence failure scenarios that begin from successful capture. Use only
+synthetic values and avoid broad test refactors.
+
+Run formatting, locked portable crate checks, Clippy with warnings denied,
+locked portable tests, dependency policy, tracked-secret scan, platform-leak
+scan, dependency-tree inspection, and `git diff --check`. Report the exact test
+count and any remaining unverified item. Do not commit, push, comment on GitHub,
+resolve review threads, or merge.

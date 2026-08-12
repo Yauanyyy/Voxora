@@ -39,7 +39,7 @@ Windows-only microphone, global shortcuts, target resolution, clipboard/SendInpu
 
 | Boundary | Data and control | Required rule |
 | --- | --- | --- |
-| User and local capture | Microphone samples and recording controls | Audio is sensitive; low-volume analysis remains local and warning-only. |
+| User and local capture | Microphone samples and recording controls | Audio is sensitive; low-volume analysis remains local and warning-only. Successful capture completion with usable Recorded Audio establishes retention through later failures; capture-boundary partial audio is best effort and may be absent. |
 | Local history/storage | Audio artifacts, transcripts, Prompts, Hotwords, application identities | SQLite metadata/text and audio artifacts have separate retention/deletion controls. Encryption at rest is not promised; rely on per-user filesystem protection. |
 | Credential store | Opaque credential references and provider secrets | Secrets use the platform credential store and never ordinary SQLite, JSON, logs, fixtures, crash reports, exports, or plaintext backups. |
 | Provider configuration boundary | Validated Base URL and opaque credential reference | Base URLs parse as absolute URLs and are limited to scheme, host, optional port, and path. Userinfo, username, password, query, and fragment are rejected before persistence and request. HTTPS is required for non-loopback endpoints; HTTP is permitted only for loopback endpoints; TLS verification cannot be disabled. Future non-secret query parameters use separate validated adapter settings. |
@@ -54,12 +54,12 @@ External applications are untrusted insertion targets. Voxora captures the targe
 ## Recording-to-insertion flow
 
 1. A configured shortcut starts one Dictation Session and binds its stop gesture to the starting mode.
-2. Audio capture emits local level information and stops on the user's gesture, Esc, capture failure, or the configured maximum.
-3. At capture end, the current focused eligible target and executable identity are resolved once for insertion and Application Profile matching.
-4. Recognition runs using the selected Recognition Configuration. Partial results are internal; a final result or an explicitly incomplete available partial is retained with the attempt.
-5. The processing pipeline works transactionally on a copy of Raw Transcript. Enabled local rules and, when configured, one LLM step produce Processed Text; any step failure discards the transformed copy and falls back to Raw Transcript.
-6. Final Text is selected, then inserted only if the captured target remains valid and focused. Success, definite failure, or delivery uncertainty is recorded without silently dropping text.
-7. History persists the Dictation Record, attempts, material-availability/durability flags, and sanitized outcome. If persistence fails, existing Recovery Artifacts and in-memory text remain non-durable, the user receives a generic unsaved-history warning, and Final Text follows the Result Panel/clipboard-last-resort path unless already confirmed delivered. Recovery material remains available according to retention and deletion settings only after it is durable.
+2. Audio capture emits local level information and stops on the user's gesture, Esc, capture failure, or the configured maximum. Capture-boundary failures may provide partial audio on a best-effort basis; missing partial audio is valid.
+3. At capture end, the current focused eligible target and executable identity are resolved once for insertion and Application Profile matching. A successful end with usable Recorded Audio establishes the strong audio-retention boundary for all later failures.
+4. Recognition runs using the selected Recognition Configuration. Partial results are internal; a final result or an explicitly incomplete available partial is retained with the attempt. Any recognition failure after successful capture retains Recorded Audio.
+5. The processing pipeline works transactionally on a copy of Raw Transcript. Enabled local rules and, when configured, one LLM step produce Processed Text; any step failure discards the transformed copy and falls back to Raw Transcript while retaining Recorded Audio.
+6. Final Text is selected, then inserted only if the captured target remains valid and focused. Success, definite failure, or delivery uncertainty is recorded without silently dropping text or Recorded Audio.
+7. History persists the Dictation Record, attempts, material-availability/durability flags, and sanitized outcome. If persistence fails, existing Recovery Artifacts, including Recorded Audio retained after successful capture, and in-memory text remain non-durable, the user receives a generic unsaved-history warning, and Final Text follows the Result Panel/clipboard-last-resort path unless already confirmed delivered. Recovery material remains available according to retention and deletion settings only after it is durable.
 
 ## Configuration precedence
 

@@ -50,11 +50,11 @@ Events for the original live session that arrive after its terminal completion, 
 | --- | --- | --- |
 | Push-to-Talk press or Toggle start while `Idle` | Begin `Capturing`; bind the stop gesture to the mode that started the session. | Create a new Session ID; no second session may start. |
 | Competing start gesture while active | Ignore/reject as a competing command. | Existing capture and its stop gesture remain unchanged. |
-| `ReleasePushToTalk` with matching Session ID and bound mode `Push-to-Talk` | Enter `StoppingCapture`, then `Recognizing` when capture ends. | Preserve Recorded Audio if any. |
-| `StopToggle` with matching Session ID and bound mode `Toggle` | Enter `StoppingCapture`, then `Recognizing` when capture ends. | Preserve Recorded Audio if any. |
+| `ReleasePushToTalk` with matching Session ID and bound mode `Push-to-Talk` | Enter `StoppingCapture`, then `Recognizing` when capture ends. | Once capture ends successfully with usable audio, preserve Recorded Audio through later work; capture-boundary failure recovery is best effort. |
+| `StopToggle` with matching Session ID and bound mode `Toggle` | Enter `StoppingCapture`, then `Recognizing` when capture ends. | Once capture ends successfully with usable audio, preserve Recorded Audio through later work; capture-boundary failure recovery is best effort. |
 | Stop gesture with mismatched Session ID or starting mode, duplicate stop, or post-capture stop | Reject as stale/competing; do not mutate the active session. | Existing capture, phase, and materials remain unchanged. |
 | Maximum duration reached | Stop capture automatically and continue recognition. | Record a deadline warning; do not treat it as cancellation. |
-| Capture device failure | End with terminal outcome `Failed` and sanitized capture-failure metadata. | Preserve any actual Recorded Audio as available recovery material; its durability depends on `PersistenceSucceeded`. |
+| Capture start, stop, or end failure | End with terminal outcome `Failed` and sanitized capture-failure metadata. | Partial audio recovery is best effort: `CaptureFailed { audio: None }` is valid, while any nonempty `RecordedAudio` actually supplied by the adapter is retained. |
 | Empty audio | End with terminal outcome `Failed`; do not call recognition with no meaningful samples. | No zero-length artifact is treated as recoverable audio; report sanitized `capture/empty-audio`. |
 | Esc during `Capturing` | End with terminal outcome `Cancelled`. | Delete intentionally cancelled audio and create no history or Recovery Artifact. |
 | Esc after capture before delivery is irreversible | Stop remaining safely cancellable work and end with terminal outcome `Cancelled`. | Preserve Recorded Audio and all available results; mark them durable only after persistence succeeds. |
@@ -71,7 +71,7 @@ The Recording Overlay is not focusable or an insertion target. During capture it
 
 1. `Recognizing` accepts Partial Transcript events only for the active attempt. Partials are not displayed in ordinary recording UI and may be retained only as explicitly incomplete recovery text if final recognition fails.
 2. A matching `RecognitionFinal` stores Raw Transcript separately. An empty final result ends with terminal outcome `Failed` and sanitized recognition-empty metadata; it is not silently successful empty text.
-3. A recognition timeout or provider failure ends with terminal outcome `Failed`, preserving Recorded Audio and any available or explicitly incomplete transcript as recovery material. An internal recognition cancellation without a higher-level user cancellation also ends with `Failed`; an explicit Esc after capture remains terminal outcome `Cancelled` while its cancellation token stops recognition.
+3. After capture successfully completes with usable Recorded Audio, a recognition timeout or provider failure ends with terminal outcome `Failed`, preserving Recorded Audio and any available or explicitly incomplete transcript as recovery material. An internal recognition cancellation without a higher-level user cancellation also ends with `Failed`; an explicit Esc after capture remains terminal outcome `Cancelled` while its cancellation token stops recognition.
 4. `RetryRecognition` from history enters the record-scoped retry context described below. It never overwrites earlier attempts and does not recreate capture or target resolution.
 5. Responses for the original live session arriving after cancellation, timeout, terminal completion, or a superseding retry are stale. While a history retry is explicitly active, a response is accepted only when the full Dictation Record ID, originating Session ID, fresh Recognition Attempt ID, attempt revision, and expected retry phase tuple matches; all prior-attempt, closed-retry, and old-live-session responses are rejected and cannot replace Raw Transcript, Processed Text, Final Text, or outcome.
 
@@ -103,7 +103,7 @@ The delivery context records whether an insertion operation may have become irre
 
 ## Persistence and recovery
 
-History persistence records the Dictation Record, attempts, Raw/Processed/Final text availability, Recorded Audio reference, terminal outcome, durability flags, and sanitized failure/warning metadata. On `PersistenceFailed`, never erase an existing Recovery Artifact or in-memory transcript/Final Text. Keep every available material marked `non-durable` until a later `PersistenceSucceeded`; do not claim that non-durable audio survives process exit or crash. Immediately show a generic unsaved-history warning because history cannot be assumed writable. If Final Text is not already confirmed delivered, present it through the Result Panel and then use clipboard-last-resort if the panel cannot appear. The existing delivery/cancel/failure decision remains the terminal outcome (`DeliveredAutomatically`, `ManualDeliveryRequired`, `DeliveryUncertain`, `Cancelled`, or `Failed`) with a persistence warning; persistence failure never creates a sixth outcome. Failed sessions create recovery records when persistence succeeds even when ordinary text/audio history is disabled, while a failed persistence attempt leaves only the explicitly retained non-durable material. Retention and deletion may later remove durable records according to user policy.
+History persistence records the Dictation Record, attempts, Raw/Processed/Final text availability, Recorded Audio reference, terminal outcome, durability flags, and sanitized failure/warning metadata. On `PersistenceFailed`, never erase an existing Recovery Artifact or in-memory transcript/Final Text. Keep every available material marked `non-durable` until a later `PersistenceSucceeded`; do not claim that non-durable audio survives process exit or crash. Immediately show a generic unsaved-history warning because history cannot be assumed writable. If Final Text is not already confirmed delivered, present it through the Result Panel and then use clipboard-last-resort if the panel cannot appear. The existing delivery/cancel/failure decision remains the terminal outcome (`DeliveredAutomatically`, `ManualDeliveryRequired`, `DeliveryUncertain`, `Cancelled`, or `Failed`) with a persistence warning; persistence failure never creates a sixth outcome. Sessions with retained material create recovery records when persistence succeeds even when ordinary text/audio history is disabled, while a failed persistence attempt leaves only the explicitly retained non-durable material. Capture-boundary failures with no supplied partial audio may therefore have no Recorded Audio recovery artifact. Retention and deletion may later remove durable records according to user policy.
 
 When `PersistenceSucceeded` arrives, the retained material is marked durable according to the persisted record and artifact results. A persistence failure after confirmed automatic insertion preserves `DeliveredAutomatically` plus a persistence warning; a failure before confirmed delivery still follows the Result Panel/clipboard path and retains the applicable manual, uncertain, cancelled, or failed outcome.
 
@@ -123,23 +123,23 @@ Future tests must cover at least:
 | Toggle start/stop | One capture; another start cannot take it over. |
 | Cross-mode or stale stop | A Push-to-Talk release cannot stop Toggle capture, a Toggle stop cannot stop Push-to-Talk capture, and mismatched Session IDs cannot mutate either session. |
 | Maximum duration | Capture stops and recognition continues with a warning. |
-| Capture failure | Terminal outcome `Failed`; any actual audio remains available with durability determined by persistence. |
+| Capture start/stop/end failure | Terminal outcome `Failed`; missing partial audio is valid, while any nonempty adapter-supplied `RecordedAudio` remains available on a best-effort basis. |
 | Empty audio | Terminal outcome `Failed`; no provider call and no recoverable zero-length audio artifact. |
 | Esc during capture | Terminal outcome `Cancelled`; audio is intentionally deleted and no history or Recovery Artifact is created. |
 | Esc after capture before irreversible delivery | Terminal outcome `Cancelled`; remaining work stops safely and audio/results remain available, durable only after persistence succeeds. |
 | Esc after irreversible delivery begins | Outcome remains `DeliveredAutomatically` if confirmed or `DeliveryUncertain` if unconfirmed; no rollback or automatic retry. |
 | Partial then final | Partial is hidden in normal UI; final Raw Transcript is retained. |
 | Partial then recognition failure | Last partial is explicitly incomplete recovery text. |
-| Recognition empty/timeout/provider failure | Terminal outcome `Failed`; matching stale response cannot mutate the record and available audio/partial material remains recoverable. |
+| Recognition empty/timeout/provider failure | Terminal outcome `Failed`; matching stale response cannot mutate the record, and Recorded Audio plus any available partial material remains recoverable after successful capture. |
 | Recognition cancellation without higher-level user cancellation | Terminal outcome `Failed`; the attempt stops without replacing earlier attempts. |
 | Late response | Matching stale response cannot mutate the record. |
-| Processing failure with confirmed insertion | Raw Transcript remains separate; terminal outcome is `DeliveredAutomatically` with a processing-fallback warning. |
+| Processing failure with confirmed insertion | Raw Transcript remains separate; terminal outcome is `DeliveredAutomatically` with a processing-fallback warning, and Recorded Audio remains available after successful capture. |
 | LLM unavailable/disabled | LLM step is skipped; enabled local rules still run. |
-| Insertion success | Terminal outcome `DeliveredAutomatically`; confirmed Final Text insertion is recorded. |
+| Insertion success | Terminal outcome `DeliveredAutomatically`; confirmed Final Text insertion is recorded and Recorded Audio remains available after successful capture. |
 | Definite insertion failure | Terminal outcome `ManualDeliveryRequired`; Result Panel or clipboard preserves Final Text. |
 | Insertion uncertainty | Terminal outcome `DeliveryUncertain`; no automatic retry and delivery uncertainty prevents duplicate text. |
 | Target invalidation/focus change | No reactivation; Result Panel or clipboard preserves Final Text under the applicable manual/uncertain outcome. |
-| Persistence failure | Existing outcome is preserved with a persistence warning; material remains available but non-durable until success, and unsaved-history warning/manual delivery rules apply. |
+| Persistence failure | Existing outcome is preserved with a persistence warning; all material available after successful capture, including Recorded Audio, remains available but non-durable until success, and unsaved-history warning/manual delivery rules apply. |
 | History retry eligibility | Durable Dictation Record with usable Recorded Audio, no live session, and no active retry is required. |
 | History retry success | Fresh Attempt ID/revision appends a successful recognition attempt for manual use; original session and outcome remain immutable. |
 | History retry failure or stale response | Only the new attempt fails or the stale event is rejected; earlier attempts/results and Recorded Audio remain unchanged. |

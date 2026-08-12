@@ -18,7 +18,8 @@ use voice_ports::{
     FakeCredentialStore, FakeHistoryStore, FakeModelManager, FakeRecognitionEngine,
     FakeResultPanel, FakeShortcutRegistry, FakeTargetResolver, FakeTargetValidator,
     FakeTextInjector, FakeTextProcessor, InjectionDisposition, PortCall, PortResult,
-    ProcessingRequest, TextProcessorPort,
+    ProcessingRequest, RecognitionCorrelationEnvelope, RecognitionEnginePort, RecognitionRequest,
+    TextProcessorPort,
 };
 
 #[derive(Clone)]
@@ -85,6 +86,7 @@ fn supervisor(
 
 struct RecordingAudio {
     calls: Arc<Mutex<Vec<PortCall>>>,
+    stop_results: VecDeque<PortResult<()>>,
     cancel_results: VecDeque<PortResult<()>>,
     discard_results: VecDeque<PortResult<()>>,
 }
@@ -103,7 +105,7 @@ impl AudioCapturePort for RecordingAudio {
             .lock()
             .expect("audio calls lock")
             .push(PortCall::AudioStop(request.session_id));
-        Ok(())
+        self.stop_results.pop_front().unwrap_or(Ok(()))
     }
 
     fn delete(&mut self, reference: AudioReferenceId) -> PortResult<()> {
@@ -128,6 +130,36 @@ impl AudioCapturePort for RecordingAudio {
             .expect("audio calls lock")
             .push(PortCall::AudioDiscard(session_id));
         self.discard_results.pop_front().unwrap_or(Ok(()))
+    }
+}
+
+struct RecordingRecognition {
+    calls: Arc<Mutex<Vec<PortCall>>>,
+}
+
+impl RecognitionEnginePort for RecordingRecognition {
+    fn recognize(&mut self, request: RecognitionRequest) -> PortResult<()> {
+        let correlation = match request {
+            RecognitionRequest::Live { correlation, .. } => {
+                RecognitionCorrelationEnvelope::Live(correlation)
+            }
+            RecognitionRequest::Retry { correlation, .. } => {
+                RecognitionCorrelationEnvelope::Retry(correlation)
+            }
+        };
+        self.calls
+            .lock()
+            .expect("recognition calls lock")
+            .push(PortCall::RecognitionStart(correlation));
+        Ok(())
+    }
+
+    fn cancel(&mut self, token: CancellationTokenId) -> PortResult<()> {
+        self.calls
+            .lock()
+            .expect("recognition calls lock")
+            .push(PortCall::RecognitionCancel(token));
+        Ok(())
     }
 }
 
@@ -314,6 +346,81 @@ fn immediate_capture_start_failure_releases_guard() {
     assert_eq!(
         supervisor.live_state().session().unwrap().outcome(),
         Some(TerminalOutcome::Failed)
+    );
+}
+
+#[test]
+fn capture_stop_failure_is_terminal_without_audio_or_recognition_and_releases_guard() {
+    let failure = voice_core::SanitizedFailure::new(
+        FailureStage::Capture,
+        FailureCode::DeviceFailure,
+        voice_core::RetryMeaning::Retryable,
+        voice_core::DeliveryCertainty::NotApplicable,
+    )
+    .unwrap();
+    let audio_calls = Arc::new(Mutex::new(Vec::new()));
+    let audio = RecordingAudio {
+        calls: audio_calls.clone(),
+        stop_results: VecDeque::from([Err(failure)]),
+        cancel_results: VecDeque::new(),
+        discard_results: VecDeque::new(),
+    };
+    let recognition_calls = Arc::new(Mutex::new(Vec::new()));
+    let clock = SharedClock(Arc::new(Mutex::new(Timestamp::new(0))));
+    let mut supervisor = ApplicationSupervisor::new(
+        ApplicationPorts {
+            audio: Box::new(audio),
+            shortcuts: Box::new(FakeShortcutRegistry::default()),
+            recognition: Box::new(RecordingRecognition {
+                calls: recognition_calls.clone(),
+            }),
+            processor: Box::new(FakeTextProcessor::default()),
+            target_resolver: Box::new(FakeTargetResolver::default()),
+            target_validator: Box::new(FakeTargetValidator::default()),
+            injector: Box::new(FakeTextInjector::default()),
+            result_panel: Box::new(FakeResultPanel::default()),
+            clipboard: Box::new(FakeClipboard::default()),
+            credentials: Box::new(FakeCredentialStore::default()),
+            history: Box::new(FakeHistoryStore::default()),
+            models: Box::new(FakeModelManager::default()),
+        },
+        Box::new(DeterministicIdentifierSource::default()),
+        Box::new(clock),
+        Box::new(DeterministicCancellation::default()),
+    );
+
+    assert_eq!(
+        supervisor.start_live(StartMode::Toggle, config()),
+        EventDisposition::Applied
+    );
+    let session = supervisor.live_state().session().unwrap();
+    let correlation = LiveCorrelation::new(
+        session.session_id(),
+        session.session_revision(),
+        Phase::Capturing,
+    );
+    assert_eq!(
+        supervisor.submit_live(LiveInput::Command(LiveCommand::StopToggle(correlation))),
+        EventDisposition::Applied
+    );
+
+    let failed = supervisor.live_state().session().unwrap();
+    assert_eq!(failed.outcome(), Some(TerminalOutcome::Failed));
+    assert!(failed.audio().is_none());
+    assert!(
+        !failed
+            .materials()
+            .state(voice_core::MaterialKind::RecordedAudio)
+            .available()
+    );
+    assert!(recognition_calls.lock().unwrap().is_empty());
+    assert!(!supervisor.work_guard().live());
+    assert_eq!(
+        audio_calls.lock().unwrap().as_slice(),
+        &[
+            PortCall::AudioStart(SessionId::new(1).unwrap()),
+            PortCall::AudioStop(SessionId::new(1).unwrap()),
+        ]
     );
 }
 
@@ -785,6 +892,7 @@ fn capture_cleanup_failure_is_bounded_retriable_and_blocks_replacement_work() {
     .unwrap();
     let audio = RecordingAudio {
         calls: calls.clone(),
+        stop_results: VecDeque::new(),
         cancel_results: VecDeque::from([Ok(()), Ok(())]),
         discard_results: VecDeque::from([Err(cleanup_failure), Err(cleanup_failure), Ok(())]),
     };
