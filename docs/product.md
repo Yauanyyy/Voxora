@@ -2,7 +2,7 @@
 
 ## Status and audience
 
-Voxora is a planned Windows-first desktop voice-input application for ordinary Windows users and open-source enthusiasts. This document records the accepted first-release product contract. M2 implements only a buildable Tauri/React workspace shell that explicitly says dictation features are not implemented; it provides no provider integration, platform adapter, persistence, credential handling, model, or voice-input behavior.
+Voxora is a planned Windows-first desktop voice-input application for ordinary Windows users and open-source enthusiasts. This document records the accepted first-release product contract. M3 implements the portable Dictation Session lifecycle, ports, deterministic fakes, and tests, but the Tauri/React desktop remains the M2 not-yet-implemented shell. There is still no real provider integration, platform adapter, persistence adapter, credential handling, model, UI workflow, or usable voice-input behavior.
 
 The user starts a Dictation Session, speaks, and receives Final Text for insertion into an eligible application outside Voxora. If insertion cannot be performed safely, the product preserves the text for manual delivery. Settings are visible without a standard/expert split.
 
@@ -42,7 +42,7 @@ The user starts a Dictation Session, speaks, and receives Final Text for inserti
 
 - Push-to-Talk and Toggle bindings may coexist. Toggle defaults to `Ctrl+Shift+Space`; Push-to-Talk is unbound until configured. Both modes use one configurable one-to-five-minute maximum, default five minutes. Reaching the limit stops capture and continues recognition.
 - Only one Dictation Session may be active. The mode that started it owns its stop gesture; another recording-start gesture cannot create or take over a second session. Modifier-only bindings have explicit conflict handling and never suppress arbitrary OS input.
-- Esc during capture intentionally cancels, deletes the recorded audio, and creates no history. Esc after capture stops remaining safely cancellable work while preserving Recorded Audio and available results in history.
+- Esc during capture intentionally cancels, deletes the recorded audio, and creates no history. Esc after capture stops remaining safely cancellable work while preserving Recorded Audio and available results in history. Once capture successfully ends with usable audio, later recognition, processing, delivery, and persistence failures retain that audio. Capture start/stop/end failures have only best-effort partial-audio recovery; missing partial audio is valid, while any nonempty adapter-supplied audio is retained.
 - The Recording Overlay is non-focusable and never an insertion target. During capture it shows elapsed seconds, input amplitude, a low-volume warning, and time-limit warnings. After capture it shows only a generic processing state; failure details are not shown there. Low volume warns but never pauses or ends recording. The UI warns at 30 seconds remaining and shows a final ten-second countdown.
 - Failure UI is generic and directs the user to history for sanitized stage and reason details. Start at login is configurable and default-off.
 
@@ -56,7 +56,7 @@ The user starts a Dictation Session, speaks, and receives Final Text for inserti
 ## History and storage
 
 - A Dictation Record relates Recorded Audio, recognition attempts, Raw Transcript, Processed Text, Final Text, status, and sanitized failure information. Text history and audio history are independently configurable, both default-on with a default 30-day retention period; retention is user-adjustable.
-- Failed sessions create recovery records even when ordinary history is disabled, so recorded material is not silently discarded. Users can play stored audio, delete it, and retry recognition with another configuration. Direct audio export is post-first-release. Users can delete one record or all records.
+- Sessions that fail after successful capture create recovery records even when ordinary history is disabled, so usable Recorded Audio is not silently discarded. Capture-boundary failures retain only any partial audio actually supplied by the adapter. Users can play stored audio, delete it, and retry recognition with another configuration. Direct audio export is post-first-release. Users can delete one record or all records.
 - Orphaned temporary audio after a crash is deleted on the next normal startup; crash recovery is not a product guarantee. SQLite transcript/history content is not promised to be encrypted at rest; the product relies on per-user filesystem protection and exposes deletion/retention controls.
 
 ## Application Profiles

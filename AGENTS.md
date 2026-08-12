@@ -26,7 +26,11 @@ When sources conflict, stop and surface the conflict. Do not silently choose whi
 - Do not store mutable session state in global singletons.
 - Avoid a catch-all orchestrator. Keep capture, recognition, processing, targeting, history, recovery, and insertion responsibilities separate.
 - Session transitions, cancellation, timeout, retry, and late responses use structured events and session-scoped identifiers.
-- Failures must not silently lose recorded audio, available transcripts, or final text.
+- Once capture successfully completes with usable Recorded Audio, later recognition,
+  processing, delivery, and persistence failures must not silently lose that audio.
+  Capture start/stop/end failures have only best-effort partial-audio recovery;
+  missing partial audio is valid. Available transcripts and Final Text retain their
+  existing no-loss guarantees.
 
 ## Security and privacy
 

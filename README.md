@@ -4,14 +4,16 @@ Voxora is a planned Windows-first desktop voice-input application. A user-initia
 
 ## Current status
 
-M2 establishes a buildable development skeleton: portable `voice-core`, `voice-ports`, and `voice-application` crates; a Tauri 2 composition root; a React/TypeScript/Vite shell; baseline Rust and Vitest tests; exact lockfiles; and CI/policy checks. The desktop currently displays only an explicit not-yet-implemented state. Dictation, providers, Windows adapters, persistence, credentials, models, history, and product UX remain unimplemented, so planned behavior is not an assertion that those capabilities work.
+M3 now implements and locally verifies the portable Dictation Session domain, correlated live and history-retry reducers, capability ports, session-scoped application coordination, deterministic fakes, and exhaustive lifecycle tests in `voice-core`, `voice-ports`, and `voice-application`. The desktop still displays only the M2 not-yet-implemented shell: real capture, providers, Windows adapters, persistence, credentials, models, history UI, and product UX remain unimplemented. The portable proof therefore does not claim that end-user dictation currently works.
 
 ## Intended first release
 
 The first release is planned for ordinary Windows users and open-source enthusiasts. Its documented scope includes:
 
 - Push-to-Talk and Toggle recording with one active Dictation Session;
-- user-selected local or cloud recognition, with preserved audio and recovery material on failure;
+- user-selected local or cloud recognition, with Recorded Audio retained after a
+  successfully completed capture even when later work fails; capture-boundary
+  failures retain only any partial audio actually supplied by the adapter;
 - configurable built-in text rules and an optional global, stateless, non-streaming LLM step;
 - Prompt Presets, a global Hotword Library, and executable-identity Application Profiles;
 - safe target resolution, clipboard paste with a SendInput fallback, and a non-focus-stealing Result Panel when automatic insertion is unsafe;
@@ -34,7 +36,7 @@ React UI → Tauri desktop boundary → voice-application → voice-ports → vo
 
 Portable business logic is independent of Tauri, React, Windows APIs, UI Automation types, and provider SDKs. Adapters depend inward on explicit ports; Windows-only behavior remains in `platform-windows`; React renders state and submits commands but does not orchestrate sessions. See [`docs/architecture.md`](docs/architecture.md) and [`docs/state-machine.md`](docs/state-machine.md).
 
-## M2 development checks
+## Portable development checks
 
 The repository pins Rust 1.97.1 and Node.js 24.15.0. Common commands are:
 
@@ -59,11 +61,11 @@ npm run models:check
 npm run tauri build -- --no-bundle
 ```
 
-The desktop build command is Windows-only in M2. See [`docs/dependency-reviews/m2-workspace-ci.md`](docs/dependency-reviews/m2-workspace-ci.md) for the exact dependency, license, advisory, action-pin, and asset review.
+The desktop build command is Windows-only in the current workspace. M3 adds no dependency, model, asset, native component, lockfile entry, or notice obligation. See [`docs/dependency-reviews/m2-workspace-ci.md`](docs/dependency-reviews/m2-workspace-ci.md) for the existing dependency, license, advisory, action-pin, and asset review.
 
 ## Privacy and recovery posture
 
-Audio, transcripts, Prompts, Hotwords, application identities, and history are sensitive local data. Cloud credentials are planned for the Windows credential store, never ordinary SQLite, JSON, logs, fixtures, crash reports, exports, or plaintext backups. Logs use sanitized stages and codes rather than complete sensitive content. SQLite transcript/history storage is not promised to be encrypted at rest; the product will disclose reliance on per-user filesystem protection. Failed sessions are designed to preserve recorded material through recovery records, subject to the documented retention and deletion rules.
+Audio, transcripts, Prompts, Hotwords, application identities, and history are sensitive local data. Cloud credentials are planned for the Windows credential store, never ordinary SQLite, JSON, logs, fixtures, crash reports, exports, or plaintext backups. Logs use sanitized stages and codes rather than complete sensitive content. SQLite transcript/history storage is not promised to be encrypted at rest; the product will disclose reliance on per-user filesystem protection. After capture successfully completes with usable Recorded Audio, later recognition, processing, delivery, and persistence failures preserve that audio through recovery records, subject to retention and deletion rules. Capture start/stop/end failures provide only best-effort partial-audio recovery: missing partial audio is valid, while any nonempty audio supplied by the adapter is retained.
 
 ## Contributing and provenance
 

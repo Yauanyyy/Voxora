@@ -2,7 +2,7 @@
 
 ## Status and test philosophy
 
-M2 establishes only build, metadata, static-shell, license-policy, model-manifest-policy, and secret-pattern test baselines. The behavioral obligations below still begin with M3 and must use deterministic fakes before native capture, provider calls, model downloads, or real insertion are introduced. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
+M3 implements the portable lifecycle baseline with deterministic fakes before native capture, provider calls, model downloads, persistence adapters, or real insertion are introduced. The final local suite contains 59 portable Rust tests across application workflow, core acceptance, core unit, and ports unit coverage. Later adapter, frontend, persistence, native, provider, and end-to-end obligations below remain future work. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
 
 ## Portable state and domain tests
 
@@ -23,18 +23,18 @@ Every state-transition table must assert one exact terminal outcome and independ
 
 | Scenario | Exact outcome | Required material and metadata |
 | --- | --- | --- |
-| Capture failure | `Failed` | Any actual Recorded Audio remains available; durability depends on persistence. |
+| Capture start/stop/end failure | `Failed` | Partial audio recovery is best effort: missing audio is valid, while any nonempty `RecordedAudio` supplied by the adapter remains available. |
 | Empty audio | `Failed` | No provider call and no recoverable zero-length audio artifact; sanitized empty-audio metadata. |
 | Esc during capture | `Cancelled` | Audio is deleted and no history or Recovery Artifact is created. |
 | Esc after capture before irreversible delivery | `Cancelled` | Recorded Audio and available results remain available, durable only after persistence succeeds. |
 | Esc after irreversible delivery begins | Preserve `DeliveredAutomatically` when delivery is confirmed, or `DeliveryUncertain` when it is not; Esc after terminal delivery is stale. | No rollback or automatic retry; preserve Final Text through the applicable delivery/recovery path. |
-| Recognition empty, timeout, or provider failure | `Failed` | Audio and any explicitly incomplete partial remain recoverable; warning/failure metadata is sanitized. |
+| Recognition empty, timeout, or provider failure after successful capture | `Failed` | Recorded Audio, any explicitly incomplete partial, and sanitized warning/failure metadata remain recoverable. |
 | Recognition cancellation without higher-level user cancellation | `Failed` | The attempt stops without replacing prior attempts; stale responses cannot mutate the record. |
-| Processing fallback followed by confirmed insertion | `DeliveredAutomatically` | Raw Transcript remains separately retained and a processing-fallback warning is present. |
-| Confirmed insertion | `DeliveredAutomatically` | Final Text delivery is confirmed. |
-| Definite insertion failure | `ManualDeliveryRequired` | Result Panel then clipboard-last-resort preserves Final Text. |
-| Insertion uncertainty | `DeliveryUncertain` | No automatic retry; Final Text remains available to prevent duplicate delivery. |
-| Persistence failure | Preserve the existing `DeliveredAutomatically`, `ManualDeliveryRequired`, `DeliveryUncertain`, `Cancelled`, or `Failed` outcome | Existing Recovery Artifacts and in-memory text are not erased; all available material is non-durable until `PersistenceSucceeded`; show a generic unsaved-history warning and use Result Panel/clipboard-last-resort if Final Text is not confirmed delivered. Do not claim non-durable audio survives exit or crash. |
+| Processing fallback followed by confirmed insertion | `DeliveredAutomatically` | Raw Transcript remains separately retained, Recorded Audio remains available, and a processing-fallback warning is present. |
+| Confirmed insertion | `DeliveredAutomatically` | Final Text delivery is confirmed and Recorded Audio remains available after successful capture. |
+| Definite insertion failure | `ManualDeliveryRequired` | Result Panel then clipboard-last-resort preserves Final Text and Recorded Audio remains available after successful capture. |
+| Insertion uncertainty | `DeliveryUncertain` | No automatic retry; Final Text and Recorded Audio remain available after successful capture to prevent loss or duplicate delivery. |
+| Persistence failure | Preserve the existing `DeliveredAutomatically`, `ManualDeliveryRequired`, `DeliveryUncertain`, `Cancelled`, or `Failed` outcome | Existing Recovery Artifacts and in-memory text are not erased; all material retained after successful capture is non-durable until `PersistenceSucceeded`; show a generic unsaved-history warning and use Result Panel/clipboard-last-resort if Final Text is not confirmed delivered. Do not claim non-durable audio survives exit or crash. |
 
 The matrix must also prove that a persistence warning never becomes a sixth terminal outcome and that late responses after cancellation, timeout, retry, or terminal completion cannot alter the selected outcome or durability flags.
 
@@ -54,7 +54,7 @@ The portable application tests should use fakes for each applicable port:
 
 | Fake | Obligations |
 | --- | --- |
-| `FakeAudioCapture` | Start/stop, amplitude warning, maximum duration, device failure, empty audio, cancellation. |
+| `FakeAudioCapture` | Scripted start/stop success or failure, amplitude warning, maximum duration, empty audio, and cancellation. Injected core capture completion/failure events separately cover both adapter-supplied `Some(audio)` and valid `None`; the fake port does not return partial audio from start/stop. |
 | `FakeRecognitionEngine` | Partial/final events, empty result, provider failure, timeout, cancellation, retry, and late response, with exact `Failed`/`Cancelled` assignment. |
 | `FakeTextProcessor` | Ordered built-in rules and their punctuation-preservation semantics, optional LLM skip, processing failure, Raw Transcript fallback, and `DeliveredAutomatically` warning behavior after confirmed insertion. |
 | `FakeTextInjector` | Success, definite failure, focus/target invalidation, irreversible start, and delivery uncertainty. |
@@ -93,7 +93,7 @@ Model-manager tests cover user-initiated download cancellation/resume as support
 
 ## CI intent (M2 and later)
 
-M2 implements Windows/macOS/Linux formatting plus common-crate compile/lint/tests; a Windows Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. The portable M2 tests validate package metadata only; they do not claim M3 lifecycle coverage. CI makes no paid provider call and downloads no model weight.
+The existing CI implements Windows/macOS/Linux formatting plus common-crate compile/lint/tests; a Windows Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. M3 now supplies the portable lifecycle suite those common-crate jobs execute. CI makes no paid provider call and downloads no model weight.
 
 ## Test evidence and review
 
