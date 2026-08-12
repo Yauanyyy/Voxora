@@ -295,6 +295,7 @@ fn capture_stop_rejects_stale_duplicate_and_wrong_mode_without_mutation() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn capture_failure_best_effort_audio_is_retained_and_missing_audio_is_valid() {
     let state = started();
     let session = state.session().unwrap();
@@ -328,6 +329,37 @@ fn capture_failure_best_effort_audio_is_retained_and_missing_audio_is_valid() {
             .iter()
             .any(|effect| matches!(effect, LiveEffect::StartRecognition { .. }))
     );
+    let audio_cleanup = audio_failure
+        .effects()
+        .iter()
+        .find_map(|effect| match effect {
+            LiveEffect::CleanupCapture { correlation, .. } => Some(*correlation),
+            _ => None,
+        })
+        .expect("capture failure must clean up the capture boundary");
+    assert_eq!(failed_session.pending_cleanup(), Some(audio_cleanup));
+    assert!(matches!(
+        audio_failure.effects().first(),
+        Some(LiveEffect::CleanupCapture { .. })
+    ));
+    let cleaned_audio = reduce_live(
+        audio_failure.state(),
+        LiveInput::Event(LiveEvent::CaptureCleanupCompleted {
+            correlation: audio_cleanup,
+            audio_cancelled: true,
+            audio_discarded: true,
+            cancellation_cancelled: true,
+        }),
+    );
+    let cleaned_session = cleaned_audio.state().session().unwrap();
+    assert!(cleaned_session.pending_cleanup().is_none());
+    assert!(cleaned_session.audio().is_some());
+    assert!(
+        cleaned_session
+            .materials()
+            .state(MaterialKind::RecordedAudio)
+            .available()
+    );
 
     let missing_audio = reduce_live(
         &state,
@@ -351,6 +383,36 @@ fn capture_failure_best_effort_audio_is_retained_and_missing_audio_is_valid() {
             .iter()
             .any(|effect| matches!(effect, LiveEffect::StartRecognition { .. }))
     );
+    let missing_cleanup = missing_audio
+        .effects()
+        .iter()
+        .find_map(|effect| match effect {
+            LiveEffect::CleanupCapture { correlation, .. } => Some(*correlation),
+            _ => None,
+        })
+        .expect("capture failure without audio still requires cleanup");
+    let cleanup_failed = reduce_live(
+        missing_audio.state(),
+        LiveInput::Event(LiveEvent::CaptureCleanupCompleted {
+            correlation: missing_cleanup,
+            audio_cancelled: false,
+            audio_discarded: true,
+            cancellation_cancelled: true,
+        }),
+    );
+    let cleanup_failed_session = cleanup_failed.state().session().unwrap();
+    assert_eq!(
+        cleanup_failed_session.pending_cleanup(),
+        Some(missing_cleanup)
+    );
+    assert_eq!(
+        cleanup_failed_session.failure().unwrap().code(),
+        FailureCode::DeviceFailure
+    );
+    assert!(cleanup_failed.effects().iter().any(|effect| matches!(
+        effect,
+        LiveEffect::RetryCaptureCleanup { correlation, .. } if *correlation == missing_cleanup
+    )));
 
     let stopping_state = stopping(&state);
     let stopping_session = stopping_state.session().unwrap();
@@ -1065,7 +1127,8 @@ fn retry_has_exact_subphases_and_preserves_original_on_result_persist_failure() 
         RetryInput::Event(RetryEvent::ResultPersistenceFailed(result_corr)),
     );
     assert!(failed.state().active().is_none());
-    assert_eq!(failed.state().record().attempts().len(), 0);
+    assert_eq!(failed.state().record().attempts().len(), 1);
+    assert!(failed.state().record().is_durable());
     let pending_record = failed.state().pending_record().unwrap();
     assert!(!pending_record.is_durable());
     assert_eq!(pending_record.attempts().len(), 1);
@@ -1366,6 +1429,38 @@ fn recovery_payload_refreshes_after_manual_preservation() {
             _ => None,
         })
         .unwrap();
+    let panel_failed = reduce_live(
+        recovery.state(),
+        LiveInput::Event(LiveEvent::ResultPanelPresentedForOperation {
+            correlation: panel,
+            presented: false,
+        }),
+    );
+    let clipboard = panel_failed
+        .effects()
+        .iter()
+        .find_map(|effect| match effect {
+            LiveEffect::CopyToClipboard { correlation, .. } => Some(*correlation),
+            _ => None,
+        })
+        .expect("failed panel must offer clipboard fallback");
+    let preservation_failed = reduce_live(
+        panel_failed.state(),
+        LiveInput::Event(LiveEvent::ClipboardFallbackForOperation {
+            correlation: clipboard,
+            copied: false,
+        }),
+    );
+    let failed_session = preservation_failed.state().session().unwrap();
+    assert_eq!(failed_session.outcome(), Some(TerminalOutcome::Cancelled));
+    assert_eq!(
+        failed_session.failure().unwrap().code(),
+        FailureCode::ManualPreservationFailed
+    );
+    assert_eq!(
+        failed_session.recovery().unwrap().record().outcome(),
+        Some(TerminalOutcome::Cancelled)
+    );
     let preserved = reduce_live(
         recovery.state(),
         LiveInput::Event(LiveEvent::ResultPanelPresentedForOperation {
@@ -1785,11 +1880,33 @@ fn retry_result_persistence_failure_archives_the_non_durable_pending_record() {
         RetryInput::Event(RetryEvent::ResultPersistenceFailed(result_corr)),
     );
     assert!(failed.state().active().is_none());
-    assert_eq!(failed.state().record().attempts().len(), 0);
+    assert_eq!(failed.state().record().attempts().len(), 1);
+    assert!(failed.state().record().is_durable());
     assert_eq!(failed.effects().len(), 1);
     assert!(matches!(
         &failed.effects()[0],
         voice_core::RetryEffect::ArchiveRecovery { record, .. } if record.attempts().len() == 1
+    ));
+    let restarted = reduce_retry(
+        failed.state(),
+        RetryInput::Command(RetryCommand::Begin {
+            attempt_id: RecognitionAttemptId::new(105).unwrap(),
+            configuration_id: ConfigurationId::new(106).unwrap(),
+            timeout: DurationLimit::from_seconds(2).unwrap(),
+            cancellation_token: CancellationTokenId::new(107).unwrap(),
+            recovery_id: voice_core::RecoveryId::new(108).unwrap(),
+            started_at: Timestamp::new(40),
+        }),
+    );
+    assert_eq!(
+        restarted.state().active().unwrap().attempt_revision().get(),
+        result_corr.attempt_revision().get() + 1
+    );
+    assert!(matches!(
+        restarted.effects().first(),
+        Some(voice_core::RetryEffect::PersistAttempt { record, attempt, .. })
+            if record.attempts().len() == 2
+                && attempt.revision() == restarted.state().active().unwrap().attempt_revision()
     ));
 }
 

@@ -780,7 +780,6 @@ fn finish_manual(
     match result {
         None => s.materials.mark_available(MaterialKind::ResultPanel),
         Some(true) => s.materials.mark_available(MaterialKind::ClipboardFallback),
-        Some(false) if s.outcome == Some(TerminalOutcome::DeliveryUncertain) => {}
         Some(false) => {
             set_failure_if_absent(
                 s,
@@ -789,7 +788,9 @@ fn finish_manual(
                 RetryMeaning::Retryable,
                 DeliveryCertainty::DefiniteFailure,
             );
-            s.outcome = Some(TerminalOutcome::Failed);
+            if s.outcome.is_none() {
+                s.outcome = Some(TerminalOutcome::Failed);
+            }
         }
     }
     let outcome = s.outcome.unwrap_or(TerminalOutcome::ManualDeliveryRequired);
@@ -1022,12 +1023,13 @@ fn reduce_terminal_event(state: &LiveState, event: LiveEvent) -> Transition {
                 return Transition::applied(LiveState::Terminal(next), Vec::new());
             }
             if !(audio_cancelled && audio_discarded && cancellation_cancelled) {
-                next.failure = Some(boundary_failure(
+                set_failure_if_absent(
+                    &mut next,
                     FailureStage::Capture,
                     FailureCode::CaptureCleanupFailed,
                     RetryMeaning::Retryable,
                     DeliveryCertainty::NotApplicable,
-                ));
+                );
             }
             Transition::applied(
                 LiveState::Terminal(next),
@@ -1283,7 +1285,14 @@ fn reduce_active_event(s: &LiveSessionState, event: LiveEvent) -> Transition {
             if let Err(reason) = set_terminal(&mut next, TerminalOutcome::Failed, Some(failure)) {
                 return Transition::ignored(LiveState::Active(s.clone()), reason);
             }
-            Transition::applied(LiveState::Terminal(next.clone()), terminal_effects(&next))
+            let cleanup = live_corr(&next, Phase::Completed);
+            next.pending_cleanup = Some(cleanup);
+            let mut effects = vec![LiveEffect::CleanupCapture {
+                correlation: cleanup,
+                cancellation_token: s.cancellation_token,
+            }];
+            effects.extend(terminal_effects(&next));
+            Transition::applied(LiveState::Terminal(next), effects)
         }
         LiveEvent::RecognitionPartial {
             correlation,
@@ -2110,6 +2119,11 @@ fn reduce_retry_event(state: &RetryState, event: RetryEvent) -> RetryTransition 
                 RetryPhase::Recognizing,
             );
             let mut next = state.clone();
+            let Some(mut durable_record) = next.pending_record.clone() else {
+                return retry_ignored(state, RejectReason::UnexpectedPhase);
+            };
+            durable_record.mark_durable();
+            next.record = durable_record;
             if let Some(a) = next.active.as_mut() {
                 a.correlation = next_corr;
             }

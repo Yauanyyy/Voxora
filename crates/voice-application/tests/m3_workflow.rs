@@ -350,7 +350,8 @@ fn immediate_capture_start_failure_releases_guard() {
 }
 
 #[test]
-fn capture_stop_failure_is_terminal_without_audio_or_recognition_and_releases_guard() {
+#[allow(clippy::too_many_lines)]
+fn capture_stop_failure_cleans_up_before_releasing_guard() {
     let failure = voice_core::SanitizedFailure::new(
         FailureStage::Capture,
         FailureCode::DeviceFailure,
@@ -359,11 +360,18 @@ fn capture_stop_failure_is_terminal_without_audio_or_recognition_and_releases_gu
     )
     .unwrap();
     let audio_calls = Arc::new(Mutex::new(Vec::new()));
+    let cleanup_failure = voice_core::SanitizedFailure::new(
+        FailureStage::Capture,
+        FailureCode::CaptureCleanupFailed,
+        voice_core::RetryMeaning::Retryable,
+        voice_core::DeliveryCertainty::NotApplicable,
+    )
+    .unwrap();
     let audio = RecordingAudio {
         calls: audio_calls.clone(),
         stop_results: VecDeque::from([Err(failure)]),
-        cancel_results: VecDeque::new(),
-        discard_results: VecDeque::new(),
+        cancel_results: VecDeque::from([Ok(()), Ok(())]),
+        discard_results: VecDeque::from([Err(cleanup_failure), Ok(())]),
     };
     let recognition_calls = Arc::new(Mutex::new(Vec::new()));
     let clock = SharedClock(Arc::new(Mutex::new(Timestamp::new(0))));
@@ -386,7 +394,11 @@ fn capture_stop_failure_is_terminal_without_audio_or_recognition_and_releases_gu
         },
         Box::new(DeterministicIdentifierSource::default()),
         Box::new(clock),
-        Box::new(DeterministicCancellation::default()),
+        Box::new(RecordingCancellation {
+            calls: audio_calls.clone(),
+            token: CancellationTokenId::new(1).unwrap(),
+            allocated: false,
+        }),
     );
 
     assert_eq!(
@@ -414,12 +426,37 @@ fn capture_stop_failure_is_terminal_without_audio_or_recognition_and_releases_gu
             .available()
     );
     assert!(recognition_calls.lock().unwrap().is_empty());
+    assert!(failed.pending_cleanup().is_some());
+    assert_eq!(failed.failure().unwrap().code(), FailureCode::DeviceFailure);
+    assert!(supervisor.work_guard().live());
+    assert_eq!(
+        supervisor.start_live(StartMode::Toggle, config()),
+        EventDisposition::Ignored(voice_core::RejectReason::CompetingWork)
+    );
+    assert_eq!(
+        supervisor.retry_capture_cleanup(),
+        EventDisposition::Applied
+    );
+    assert!(
+        supervisor
+            .live_state()
+            .session()
+            .unwrap()
+            .pending_cleanup()
+            .is_none()
+    );
     assert!(!supervisor.work_guard().live());
     assert_eq!(
         audio_calls.lock().unwrap().as_slice(),
         &[
             PortCall::AudioStart(SessionId::new(1).unwrap()),
             PortCall::AudioStop(SessionId::new(1).unwrap()),
+            PortCall::AudioCancel(SessionId::new(1).unwrap()),
+            PortCall::AudioDiscard(SessionId::new(1).unwrap()),
+            PortCall::RecognitionCancel(CancellationTokenId::new(1).unwrap()),
+            PortCall::AudioCancel(SessionId::new(1).unwrap()),
+            PortCall::AudioDiscard(SessionId::new(1).unwrap()),
+            PortCall::RecognitionCancel(CancellationTokenId::new(1).unwrap()),
         ]
     );
 }
@@ -721,6 +758,9 @@ fn retry_result_persistence_failure_archives_full_pending_record_and_allows_new_
     let recovery = supervisor.recoveries()[0].clone();
     assert_eq!(recovery.record().attempts().len(), 1);
     assert!(!recovery.record().is_durable());
+    let durable_pending = supervisor.retry_state().unwrap().record().clone();
+    assert_eq!(durable_pending.attempts().len(), 1);
+    assert!(durable_pending.is_durable());
     assert_eq!(
         supervisor.persist_recovery(voice_core::RecoveryCorrelation::new(
             recovery.id(),
@@ -730,6 +770,34 @@ fn retry_result_persistence_failure_archives_full_pending_record_and_allows_new_
         EventDisposition::Applied
     );
     assert!(supervisor.recoveries()[0].is_closed());
+    assert_eq!(
+        supervisor.retry_recognition(
+            durable_pending,
+            RetryStartConfig {
+                recognition_configuration_id: ConfigurationId::new(84).unwrap(),
+                timeout: DurationLimit::from_seconds(2).unwrap(),
+            },
+        ),
+        EventDisposition::Applied
+    );
+    let second = supervisor.retry_state().unwrap().active().unwrap();
+    assert_eq!(
+        second.attempt_revision().get(),
+        correlation.attempt_revision().get() + 1
+    );
+    assert_eq!(
+        supervisor.submit_retry(voice_core::RetryInput::Event(
+            RetryEvent::RecognitionFinal {
+                correlation: second,
+                raw: RawTranscript::new("second retry text"),
+            },
+        )),
+        EventDisposition::Applied
+    );
+    assert_eq!(
+        supervisor.retry_state().unwrap().record().attempts().len(),
+        2
+    );
     assert_eq!(
         supervisor.start_live(StartMode::Toggle, config()),
         EventDisposition::Applied

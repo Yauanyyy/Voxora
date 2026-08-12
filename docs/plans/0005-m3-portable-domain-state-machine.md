@@ -2,11 +2,14 @@
 
 ## Status
 
-Implemented and verified on branch `codex/m3-portable-domain-state-machine`.
-This follow-up amends the M3 audio-retention boundary after an explicit user
-decision: successful capture establishes a strong Recorded Audio preservation
-guarantee for later failures, while capture start/stop/end failure permits only
-best-effort recovery of any partial audio the adapter actually makes available.
+Implemented and locally verified on branch
+`codex/m3-portable-domain-state-machine`. Three new actionable PR review findings
+were corrected and revalidated. The earlier follow-up amended the M3
+audio-retention boundary
+after an explicit user decision: successful capture establishes a strong
+Recorded Audio preservation guarantee for later failures, while capture
+start/stop/end failure permits only best-effort recovery of any partial audio the
+adapter actually makes available.
 The primary agent owns this plan, the final Executor Brief, review-finding
 classification, validation, Git integration, and Pull Request handling. A
 `sol_planner` subagent supplied read-only evidence and design advice; the
@@ -16,10 +19,11 @@ The implementation is confined to the three existing portable crates and their
 tests. It adds no dependency, adapter, native integration, model, asset,
 migration, network destination, UI behavior, lockfile change, or notice change.
 Cross-platform CI remains the remote evidence gate; the verification record
-below describes the completed local and read-only-agent checks.
-Pull Request #3 remains open for this branch. This amendment is integrated by
-additive commit and push only; it does not authorize review-thread resolution,
-a new Codex Review request, or merge.
+below describes the completed local checks and preserves the earlier read-only
+agent evidence.
+Pull Request #3 remains open for this branch. Review corrections are integrated
+by additive commit and push only; they do not authorize review-thread replies or
+resolution, a new Codex Review request, or merge.
 
 ## Objective
 
@@ -424,11 +428,17 @@ status-document commits restores the M2 skeleton without data cleanup.
   the original M3 implementation. Its first audio-retention amendment review
   identified one low-severity testing-guide ambiguity that could have implied a
   more complex capture port; the wording was corrected, and the final amendment
-  verdict was `ACCEPT` with no remaining actionable finding.
+  verdict was `ACCEPT` for that reviewed snapshot.
   Earlier rounds identified in-scope correlation, recovery, cleanup, cancellation,
   processing, retry, wire-code, and coverage defects. Those findings were
-  corrected through bounded revised Executor Briefs. The final verdict was
-  `ACCEPT`, with no remaining actionable M3 issue.
+  corrected through bounded revised Executor Briefs. A later GitHub Codex Review
+  of commit `d9cdf4a` identified three additional in-scope defects: capture-stop
+  failure cleanup, retry revision reuse after result-persistence failure, and
+  terminal-outcome replacement after recovery fallback failure. The reducer now
+  establishes fail-closed capture cleanup before releasing the work guard,
+  advances the durable retry baseline after pending-attempt persistence, and
+  preserves an already selected terminal outcome when later manual recovery
+  fails.
 - The amended local suite contains 59 portable Rust tests: 15 application
   workflow tests, 32 core acceptance tests, six core unit tests, and six ports
   unit tests.
@@ -436,6 +446,11 @@ status-document commits restores the M2 skeleton without data cleanup.
   with warnings denied, locked portable-crate tests, `cargo deny check`, tracked
   secret scanning, portable platform-leak scanning, inward dependency-tree
   inspection, and `git diff --check`.
+- Primary-agent final diff review confirmed that capture cleanup preserves any
+  event-supplied best-effort Recorded Audio, cleanup failure retains the original
+  capture failure and keeps competing work blocked, retry revisions remain
+  monotonic after result-persistence failure, and persistence fallback failure
+  does not overwrite `Cancelled` or another previously selected outcome.
 - No manifest, lockfile, `THIRD_PARTY_NOTICES.md`, desktop, CI, provider,
   persistence-adapter, platform-adapter, model, asset, or migration file changed.
 - Windows/macOS/Linux CI is not claimed by this local record and remains the
@@ -509,19 +524,64 @@ processing, delivery, or persistence failure must retain it. If capture itself
 fails, including start, stop, or end failure, partial audio recovery is best
 effort; absence is valid, while any nonempty `RecordedAudio` actually supplied by
 the adapter is retained. Transcript and Final Text preservation guarantees remain
-unchanged. Keep `AudioCapturePort::stop -> PortResult<()>` and the existing
-application stop-failure mapping unchanged.
+unchanged. Keep `AudioCapturePort::stop -> PortResult<()>` and the application
+stop-failure mapping to `CaptureFailed { audio: None }` unchanged.
 
 Update the capture-failure core test to prove both `Some(audio)` best-effort
 preservation and valid `None`. Add an application regression test in which the
 audio stop port fails and assert terminal capture failure, no Recorded Audio,
-no recognition start, and released live-work guard. Add explicit Recorded Audio
-availability assertions to representative recognition, processing, delivery,
-and persistence failure scenarios that begin from successful capture. Use only
-synthetic values and avoid broad test refactors.
+no recognition start, and capture cleanup before the live-work guard is released.
+Add explicit Recorded Audio availability assertions to representative
+recognition, processing, delivery, and persistence failure scenarios that begin
+from successful capture. Use only synthetic values and avoid broad test
+refactors.
 
 Run formatting, locked portable crate checks, Clippy with warnings denied,
 locked portable tests, dependency policy, tracked-secret scan, platform-leak
 scan, dependency-tree inspection, and `git diff --check`. Report the exact test
 count and any remaining unverified item. Do not commit, push, comment on GitHub,
 resolve review threads, or merge.
+
+### PR review correction brief
+
+Correct the three new actionable review findings without changing the accepted
+M3 product or architecture contract. The primary agent owns
+`crates/voice-core/src/reducer.rs`,
+`crates/voice-core/tests/m3_acceptance.rs`,
+`crates/voice-application/src/lib.rs`,
+`crates/voice-application/tests/m3_workflow.rs`, and this bounded plan amendment.
+Preserve unrelated work and do not edit manifests, lockfiles, notices, desktop,
+CI, provider/platform/persistence adapters, ADRs, models, or assets.
+
+For a matching capture-boundary failure, retain any nonempty `RecordedAudio`
+already supplied by the event, select terminal `Failed`, and create the ordinary
+record-persistence effect. Also establish a correlated pending capture-cleanup
+obligation before releasing the one-active-work guard. Cleanup must cancel the
+capture, discard only session-scoped incomplete capture state, and cancel the
+capture token. Route cleanup before persistence so a potentially live microphone
+is stopped promptly. If any cleanup action fails, retain the pending obligation,
+keep live and retry starts blocked, preserve the original capture failure when
+present, and allow the existing explicit bounded cleanup retry. Successful
+cleanup clears only the obligation and must not erase retained best-effort audio.
+
+When pending retry-attempt persistence succeeds, advance the retry reducer's
+durable record snapshot to include that persisted pending attempt before starting
+recognition. If later result persistence fails, archive the non-durable result
+snapshot while retaining the durable pending attempt and its revision in active
+state. A subsequent retry must therefore use the next checked revision and must
+not conflict with the already persisted attempt history.
+
+When persistence recovery invokes Result Panel and clipboard fallback after an
+outcome such as `Cancelled`, failure of both manual-preservation mechanisms must
+add sanitized delivery failure metadata without replacing the previously selected
+outcome. Direct delivery paths with no selected outcome still become `Failed`
+when neither manual mechanism preserves Final Text. Keep warnings, failure
+metadata, durability, and terminal outcome orthogonal.
+
+Add deterministic core and application regressions that prove capture cleanup
+blocks replacement work until completion, best-effort audio survives cleanup,
+retry revisions remain monotonic after result-persistence failure, and a cancelled
+outcome survives failed Result Panel plus clipboard recovery. Run the full M3
+validation matrix already listed in this plan, inspect the complete diff for
+privacy, dependency direction, scope, and sensitive data, then use additive
+commit and push only. Do not reply to or resolve review threads and never merge.
