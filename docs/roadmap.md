@@ -1,6 +1,6 @@
 # Roadmap Index
 
-The milestone order, entry gates, acceptance criteria, and completion definition in [`docs/implementation-plan.md`](implementation-plan.md) are the sole delivery authority. This page is only a navigation index and must not become a second implementation plan. All milestones remain subject to the independent-implementation, privacy, recovery, dependency, model, and licensing constraints in the master plan.
+The milestone scopes, explicit sequencing or parallel-phase rules, entry gates, acceptance criteria, and completion definition in [`docs/implementation-plan.md`](implementation-plan.md) are the sole delivery authority. This page is only a navigation index and must not become a second implementation plan. All milestones remain subject to the independent-implementation, privacy, recovery, dependency, model, and licensing constraints in the master plan.
 
 | Milestone | Planned focus | Authority |
 | --- | --- | --- |
@@ -16,4 +16,4 @@ The milestone order, entry gates, acceptance criteria, and completion definition
 | M9 | Windows-first release hardening, packaging, accessibility/privacy/recovery checks, notices, and release guidance. | [Implementation plan — M9](implementation-plan.md#m9--release-hardening) |
 | M10 | Post-first-release candidates: Hotword Candidates, additional models/providers/rules, direct audio export, and non-Windows adapters. | [Implementation plan — M10](implementation-plan.md#m10--post-first-release-candidates) |
 
-Current repository status is M3: the portable domain, capability ports, session state machines, deterministic fakes, and lifecycle tests are implemented and locally verified, while the Tauri/React desktop remains a non-functional shell. M4–M9 persistence, product UX, native adapters, providers, models, packaging, and release claims remain unimplemented.
+Current repository status is M4: portable lifecycle/configuration, deterministic fakes, SQLite history/audio-artifact persistence, and Windows Credential Manager integration are implemented and merged, while the Tauri/React desktop remains a non-functional shell. M5-M8 enter a shared-readiness, parallel-workstream, stage-end-Integration phase defined by [`plans/0007-m5-m8-parallel-agent-orchestration.md`](plans/0007-m5-m8-parallel-agent-orchestration.md); M5-M9 product UX, native capture/targeting/insertion, providers, local models, packaging, and release claims remain unimplemented.
