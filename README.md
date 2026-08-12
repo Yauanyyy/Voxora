@@ -4,7 +4,7 @@ Voxora is a planned Windows-first desktop voice-input application. A user-initia
 
 ## Current status
 
-M3 now implements and locally verifies the portable Dictation Session domain, correlated live and history-retry reducers, capability ports, session-scoped application coordination, deterministic fakes, and exhaustive lifecycle tests in `voice-core`, `voice-ports`, and `voice-application`. The desktop still displays only the M2 not-yet-implemented shell: real capture, providers, Windows adapters, persistence, credentials, models, history UI, and product UX remain unimplemented. The portable proof therefore does not claim that end-user dictation currently works.
+M4 now implements and locally verifies the portable configuration model, built-in Prompt and processing-rule catalogs, stable Hotword selection, versioned SQLite configuration/history storage, separate audio artifacts, retention/deletion/startup maintenance, safe SQLite backup, and a Windows Credential Manager adapter. M3's portable Dictation Session lifecycle and recovery behavior remain covered. The desktop still displays only the M2 not-yet-implemented shell: real capture, providers, targeting/insertion, settings/history UI, models, and product UX remain unimplemented, so end-user dictation does not yet work.
 
 ## Intended first release
 
@@ -42,9 +42,10 @@ The repository pins Rust 1.97.1 and Node.js 24.15.0. Common commands are:
 
 ```text
 cargo fmt --all -- --check
-cargo check --locked -p voice-core -p voice-ports -p voice-application --all-targets
-cargo clippy --locked -p voice-core -p voice-ports -p voice-application --all-targets --all-features -- -D warnings
-cargo test --locked -p voice-core -p voice-ports -p voice-application --all-targets
+cargo check --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets
+cargo clippy --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets --all-features -- -D warnings
+cargo test --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets
+cargo test --locked -p platform-windows --all-targets
 cargo deny check
 ```
 
@@ -61,11 +62,11 @@ npm run models:check
 npm run tauri build -- --no-bundle
 ```
 
-The desktop build command is Windows-only in the current workspace. M3 adds no dependency, model, asset, native component, lockfile entry, or notice obligation. See [`docs/dependency-reviews/m2-workspace-ci.md`](docs/dependency-reviews/m2-workspace-ci.md) for the existing dependency, license, advisory, action-pin, and asset review.
+The desktop build command is Windows-only in the current workspace. M4 adds reviewed `url`, bundled SQLite, and target-scoped Windows credential-store dependencies, but no provider SDK, model, network client, distributed native DLL, or asset. See [`docs/dependency-reviews/m4-local-persistence-configuration.md`](docs/dependency-reviews/m4-local-persistence-configuration.md) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Privacy and recovery posture
 
-Audio, transcripts, Prompts, Hotwords, application identities, and history are sensitive local data. Cloud credentials are planned for the Windows credential store, never ordinary SQLite, JSON, logs, fixtures, crash reports, exports, or plaintext backups. Logs use sanitized stages and codes rather than complete sensitive content. SQLite transcript/history storage is not promised to be encrypted at rest; the product will disclose reliance on per-user filesystem protection. After capture successfully completes with usable Recorded Audio, later recognition, processing, delivery, and persistence failures preserve that audio through recovery records, subject to retention and deletion rules. Capture start/stop/end failures provide only best-effort partial-audio recovery: missing partial audio is valid, while any nonempty audio supplied by the adapter is retained.
+Audio, transcripts, Prompts, Hotwords, application identities, and history are sensitive local data. The M4 Windows adapter stores cloud credentials in Windows Credential Manager; SQLite and backups contain only opaque credential references. Logs and adapter errors use sanitized stages and codes rather than complete sensitive content. SQLite transcript/history storage is not encrypted at rest; the product relies on per-user filesystem protection. Recorded Audio is stored outside SQLite blobs and is removed through a durable deletion queue. After capture successfully completes with usable Recorded Audio, later recognition, processing, delivery, and persistence failures preserve that audio through recovery records, subject to retention and deletion rules. Capture start/stop/end failures provide only best-effort partial-audio recovery: missing partial audio is valid, while any nonempty audio supplied by the adapter is retained.
 
 ## Contributing and provenance
 

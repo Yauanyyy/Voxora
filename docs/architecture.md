@@ -2,7 +2,7 @@
 
 ## Status and intent
 
-This is the architecture for a Windows-first product. M3 implements the portable domain behavior, explicit capability ports, deterministic reducers, and session-scoped application coordination in `voice-core`, `voice-ports`, and `voice-application`. The Tauri composition root and React UI remain the M2 shell, and no provider, persistence, or platform adapter is implemented. Portable business logic remains independent of Windows and provider APIs.
+This is the architecture for a Windows-first product. M4 extends the M3 portable lifecycle with configuration/history/artifact ports, bounded application services, a cross-platform `history-sqlite` adapter, and a Windows-only credential adapter in `platform-windows`. The Tauri composition root and React UI remain the M2 shell, and no capture, provider, targeting/insertion, or model adapter is implemented. Portable business logic remains independent of Windows and provider APIs.
 
 ## Layer responsibilities
 
@@ -22,7 +22,7 @@ voice-core        ├─ provider-doubao
 ```
 
 - `voice-core` owns domain values, identifiers, deterministic transitions, and provider/platform-independent error meaning. It must contain no `cfg(windows)` and must not depend on Tauri, React, Windows APIs, UI Automation types, or provider SDKs.
-- `voice-ports` owns capability contracts and portable request/result types and depends only on `voice-core`. Planned ports cover audio capture, shortcuts, recognition, processing, insertion, target resolution, credentials, history, model management, and clock behavior.
+- `voice-ports` owns capability contracts and portable request/result types and depends only on `voice-core`. It includes configuration, Prompt/library, processing configuration, history maintenance, audio-artifact, credential, lifecycle, and deterministic fake contracts.
 - `voice-application` owns bounded use cases and session-scoped coordination. It depends only on core and ports; it is not a catch-all orchestrator.
 - Adapters implement ports and depend inward on ports/core. Inward layers never depend on an adapter. The Tauri crate is the only production composition root and selects the adapters used by a desktop build.
 - React receives mapped state and submits commands at the Tauri boundary. It never imports Rust/provider concepts directly and never orchestrates a Dictation Session.
@@ -70,7 +70,7 @@ External applications are untrusted insertion targets. Voxora captures the targe
 
 ## Persistence boundaries
 
-SQLite is planned for settings, Prompt Presets, Hotwords, Application Profiles, Dictation Record metadata, recognition attempts, transcripts, outcomes, retention, durability, and sanitized failure details. Recorded Audio is stored as separate artifacts, not SQLite blobs. Persisted Base URLs are validated before storage and contain no userinfo, username, password, query, or fragment; credential values remain in the platform credential store and are referenced only opaquely. Future model files are separate reviewed artifacts with source, version, size, SHA-256, license, and provenance metadata. Deletion and retention services must remove linked artifacts consistently. A persistence failure never erases existing Recovery Artifacts or in-memory text; available material remains non-durable until persistence succeeds, and non-durable audio is not claimed to survive exit or crash.
+`history-sqlite` owns ordered transactional migrations and stores settings, Prompt Presets, Hotwords, Application Profiles, Dictation Record metadata, recognition attempts, independent transcript fields, outcomes, retention, durability, and sanitized failure details. Recorded Audio uses adapter-owned `temporary/` and `committed/` artifacts, never SQLite blobs or full persisted paths. Persisted Base URLs are validated before storage and contain no userinfo, username, password, query, or fragment; credential values remain in Windows Credential Manager and are referenced only opaquely. Deletion and retention clear database references transactionally before retryable physical cleanup through a durable queue. Startup maintenance removes only owned temporary files and retries that queue. SQLite backup uses a consistent snapshot and contains neither credentials nor audio. A persistence failure never erases caller-owned audio or in-memory text; available material remains non-durable until persistence succeeds, and non-durable audio is not claimed to survive exit or crash. Future model files remain separate reviewed artifacts with source, version, size, SHA-256, license, and provenance metadata.
 
 ## Operation without a project server
 
@@ -78,6 +78,6 @@ Voxora is a local desktop application. It does not require a project-operated se
 
 ## Expected future repository responsibilities
 
-The master plan records the expected crate tree. M3 still uses only `voice-core`, `voice-ports`, `voice-application`, and the existing Tauri/React desktop shell. `history-sqlite` will own persistence; provider adapters will own Doubao, OpenAI-compatible processing, and sherpa-onnx integration; `platform-windows` will own native capture, shortcuts, targeting, credentials, and insertion. Those future adapter crates do not exist yet.
+The master plan records the expected crate tree. M4 adds `history-sqlite` for local persistence/audio artifacts and `platform-windows` for Windows Credential Manager access. Provider adapters will own Doubao, OpenAI-compatible processing, and sherpa-onnx integration; later `platform-windows` milestones will add native capture, shortcuts, targeting, and insertion without moving Windows types inward.
 
 See ADRs [0001](adr/0001-windows-first-portable-core.md), [0002](adr/0002-tauri-rust-react-desktop-stack.md), and [0005](adr/0005-ports-and-adapters.md) for the accepted architectural choices.

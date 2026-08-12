@@ -27,11 +27,11 @@ jobs:
       - name: Check Rust formatting
         run: cargo +1.97.1 fmt --all -- --check
 
-      - name: Check portable crates
-        run: cargo +1.97.1 check --locked -p voice-core -p voice-ports -p voice-application --all-targets
+      - name: Check portable and persistence crates
+        run: cargo +1.97.1 check --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets
 
-      - name: Lint portable crates
-        run: cargo +1.97.1 clippy --locked -p voice-core -p voice-ports -p voice-application --all-targets --all-features -- -D warnings
+      - name: Lint portable and persistence crates
+        run: cargo +1.97.1 clippy --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets --all-features -- -D warnings
 
-      - name: Test portable crates
-        run: cargo +1.97.1 test --locked -p voice-core -p voice-ports -p voice-application --all-targets
+      - name: Test portable and persistence crates
+        run: cargo +1.97.1 test --locked -p voice-core -p voice-ports -p voice-application -p history-sqlite --all-targets

@@ -2,7 +2,7 @@
 
 ## Status and test philosophy
 
-M3 implements the portable lifecycle baseline with deterministic fakes before native capture, provider calls, model downloads, persistence adapters, or real insertion are introduced. The final local suite contains 59 portable Rust tests across application workflow, core acceptance, core unit, and ports unit coverage. Later adapter, frontend, persistence, native, provider, and end-to-end obligations below remain future work. No fixture may contain a real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
+M4 implements the portable lifecycle/configuration baseline, deterministic fakes, cross-platform SQLite persistence/audio-artifact adapter, and Windows Credential Manager adapter before native capture, provider calls, model downloads, or real insertion are introduced. The final local M4 matrix runs 93 Rust tests across core, ports, application workflow/configuration, SQLite integration, and Windows credential coverage. Frontend, native capture/targeting/insertion, provider, model, and end-to-end obligations below remain future work. Fixtures use only synthetic content and no real credential, endpoint, Prompt, transcript, Hotword, account identifier, audio sample, or private path.
 
 ## Portable state and domain tests
 
@@ -75,9 +75,9 @@ Provider payload tests must prove the trust boundary independently for each path
 
 ## Persistence, privacy, and redaction tests
 
-Future persistence tests must verify independent text/audio retention, record and artifact deletion, orphan temporary-audio cleanup on normal startup, failed-session recovery even when ordinary history is disabled, and independent Raw/Processed/Final text storage. Credential serialization tests must assert that secrets and credential-bearing Base URLs do not appear in SQLite, JSON, logs, exports, backups, or crash reports, and that credentials remain opaque CredentialStore references.
+M4 persistence tests verify ordered migration and rollback, repeat open and newer-schema rejection, seeded defaults, independent text/audio retention, record/all/direct-audio deletion, durable queued cleanup after filesystem failure, traversal rejection, owned temporary-audio cleanup, idempotent startup maintenance, failed-session and capture-boundary recovery policy, stable record age across recovery/retry updates, and independent Raw/Processed/Final/Partial text storage. End-to-end configuration tests prove a rejected credential-bearing Base URL and its synthetic secret appear in neither SQLite nor its consistent backup; persisted provider configuration contains only validated Base URLs and opaque CredentialStore references.
 
-Base URL validation tests must reject relative/non-absolute URLs plus userinfo, username, password, query, and fragment components before persistence and before any request; require HTTPS for non-loopback endpoints; permit HTTP only for loopback endpoints; and reject any attempt to disable TLS verification. Future adapter-setting tests must keep non-secret provider query parameters separate from Base URL and validate them independently. Invalid or credential-bearing URL input must not be echoed in validation errors, logs, or history.
+Base URL validation tests reject relative/non-absolute URLs plus userinfo, username, password, query, and fragment components before persistence; require HTTPS for non-loopback endpoints; permit HTTP only for loopback endpoints; reject invalid ports and whitespace; and make TLS-disable configuration unrepresentable. M7 must repeat validation before requests and keep any future non-secret provider query parameters separate from Base URL. Invalid or credential-bearing input is not echoed in validation errors, logs, or history.
 
 Log-redaction tests must reject complete Prompts, transcripts, provider response bodies, audio, Hotword content, credential-bearing URLs, account identifiers, and complete private filesystem paths. Structured failures must contain only sanitized stage/code, retry meaning, delivery certainty, and recoverable-material indicators.
 
@@ -93,7 +93,7 @@ Model-manager tests cover user-initiated download cancellation/resume as support
 
 ## CI intent (M2 and later)
 
-The existing CI implements Windows/macOS/Linux formatting plus common-crate compile/lint/tests; a Windows Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. M3 now supplies the portable lifecycle suite those common-crate jobs execute. CI makes no paid provider call and downloads no model weight.
+The CI configuration runs Windows/macOS/Linux formatting plus portable and `history-sqlite` compile/lint/tests; Windows credential-adapter check/lint/tests and Tauri desktop build; frontend formatting, lint, Vitest, and production build; fail-closed Cargo/npm license and source checks; model-manifest structural/negative tests; and tracked-file secret-pattern checks. The Windows credential test uses a unique synthetic entry and deletes it. CI makes no paid provider call and downloads no model weight. Remote runner results remain required evidence before merge.
 
 ## Test evidence and review
 

@@ -1,7 +1,7 @@
 //! Portable domain values and deterministic state transitions for Voxora.
 //!
-//! This crate deliberately uses only the Rust standard library.  It contains no
-//! provider, platform, UI, persistence, or runtime types; those capabilities are
+//! This crate uses only portable, provider-independent dependencies. It contains
+//! no platform, UI, persistence, or runtime types; those capabilities are
 //! represented by the contracts in `voice-ports`.
 
 #![deny(unsafe_code)]
@@ -9,12 +9,14 @@
 use std::fmt;
 use std::num::NonZeroU64;
 
+mod configuration;
 mod ids;
 mod materials;
 mod processing;
 mod reducer;
 mod values;
 
+pub use configuration::*;
 pub use ids::*;
 pub use materials::*;
 pub use processing::*;

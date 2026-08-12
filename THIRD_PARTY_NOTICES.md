@@ -10,6 +10,20 @@ M2 commits no third-party native DLL, WebView2 installer, font, sample media, pr
 
 The Voxora source, documentation, and project-authored icon use project SPDX expression `GPL-3.0-only`; see [`LICENSE`](LICENSE) and [`docs/licensing.md`](docs/licensing.md). That expression does not alter the licenses of third-party works. A future binary distribution must preserve every applicable third-party notice and satisfy the GPL Corresponding Source obligations; M9 owns release-package auditing.
 
+## M4 local persistence and Windows credentials
+
+M4 adds `rusqlite 0.40.2` with only its reviewed backup and bundled SQLite features for
+the local history adapter, plus target-scoped `keyring-core 1.0.0` and
+`windows-native-keyring-store 1.1.0` for Windows Credential Manager. Both
+credential crates are MIT OR Apache-2.0; rusqlite and its bundled SQLite path
+are reviewed in [`docs/dependency-reviews/m4-local-persistence-configuration.md`](docs/dependency-reviews/m4-local-persistence-configuration.md).
+The portable core also selects the already locked `url 2.5.8` parser with
+default features disabled for fail-closed Base URL validation; it performs no
+network access.
+The exact resolved graph is authoritative in `Cargo.lock`. No credential
+secret, provider SDK, model, network client, or native binary is distributed
+by M4.
+
 ## Future record format
 
 Every distributed or downloaded component that requires a notice must receive a reviewed record before it is used or shipped. Record at least:

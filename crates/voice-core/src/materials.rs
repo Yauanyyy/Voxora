@@ -437,6 +437,8 @@ pub struct DictationRecord {
     warnings: Vec<Warning>,
     failure: Option<SanitizedFailure>,
     outcome: Option<TerminalOutcome>,
+    hotwords_used: u32,
+    hotwords_total: u32,
     durable: bool,
 }
 
@@ -456,6 +458,8 @@ impl DictationRecord {
             warnings: Vec::new(),
             failure: None,
             outcome: None,
+            hotwords_used: 0,
+            hotwords_total: 0,
             durable: false,
         }
     }
@@ -518,6 +522,11 @@ impl DictationRecord {
     #[must_use]
     pub const fn outcome(&self) -> Option<TerminalOutcome> {
         self.outcome
+    }
+
+    #[must_use]
+    pub const fn hotword_usage(&self) -> (u32, u32) {
+        (self.hotwords_used, self.hotwords_total)
     }
 
     #[must_use]
@@ -596,6 +605,11 @@ impl DictationRecord {
 
     pub const fn set_outcome(&mut self, outcome: TerminalOutcome) {
         self.outcome = Some(outcome);
+    }
+
+    pub const fn set_hotword_usage(&mut self, used: u32, total: u32) {
+        self.hotwords_total = total;
+        self.hotwords_used = if used > total { total } else { used };
     }
 
     pub fn set_warnings(&mut self, warnings: Vec<Warning>) {
@@ -704,6 +718,28 @@ impl RecognitionAttempt {
     pub fn fail(&mut self, failure: SanitizedFailure) {
         self.failure = Some(failure);
         self.status = AttemptStatus::Failed;
+    }
+
+    /// Restore persisted attempt state using only validated portable values.
+    #[must_use]
+    pub fn restore(
+        id: RecognitionAttemptId,
+        revision: Revision,
+        configuration_id: ConfigurationId,
+        status: AttemptStatus,
+        raw_transcript: Option<RawTranscript>,
+        partial_transcript: Option<PartialTranscript>,
+        failure: Option<SanitizedFailure>,
+    ) -> Self {
+        Self {
+            id,
+            revision,
+            configuration_id,
+            status,
+            raw_transcript,
+            partial_transcript,
+            failure,
+        }
     }
 }
 

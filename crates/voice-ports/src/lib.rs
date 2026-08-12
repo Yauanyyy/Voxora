@@ -10,12 +10,14 @@
 use std::collections::{HashMap, VecDeque};
 
 use voice_core::{
-    AudioReferenceId, CancellationTokenId, CredentialReferenceId, CredentialSecret,
-    DeliveryOperationCorrelation, DictationRecord, DictationRecordId, DurationLimit, FailureCode,
-    FinalText, InsertionTarget, LiveCorrelation, ModelId, PersistenceReport, ProcessingPlan,
-    ProcessingResult, RecognitionCorrelation, RecordedAudio, RecoveryCorrelation, RetryCorrelation,
-    SanitizedFailure, SessionId, StartMode, TargetOperationCorrelation, TargetResolution,
-    Timestamp,
+    ApplicationProfile, AudioReferenceId, BuiltInRuleId, CancellationTokenId,
+    CredentialReferenceId, CredentialSecret, DeliveryOperationCorrelation, DictationRecord,
+    DictationRecordId, DurationLimit, FailureCode, FinalText, HotwordGroup, InsertionTarget,
+    LanguageModelConfiguration, LiveCorrelation, ModelId, PersistenceReport, ProcessingOrder,
+    ProcessingPlan, ProcessingResult, PromptPreset, PromptPresetId, PromptShortcut,
+    RecognitionConfiguration, RecognitionCorrelation, RecordedAudio, RecoveryCorrelation,
+    RetentionPolicy, RetryCorrelation, RuleOverride, SanitizedFailure, SessionId, StartMode,
+    TargetOperationCorrelation, TargetResolution, Timestamp,
 };
 
 /// Checked exhaustion reported by deterministic allocation/clock helpers.
@@ -58,8 +60,17 @@ pub enum PortCall {
     Clipboard(DeliveryOperationCorrelation),
     CredentialRead(CredentialReferenceId),
     CredentialWrite(CredentialReferenceId),
+    CredentialDelete(CredentialReferenceId),
+    AudioStage(AudioReferenceId),
+    AudioCommit(AudioReferenceId),
+    AudioArtifactDelete(AudioReferenceId),
+    AudioStartupMaintenance,
     HistoryPersist(DictationRecordId),
     HistoryRecovery(DictationRecordId),
+    HistoryDeleteRecord(DictationRecordId),
+    HistoryDeleteAll,
+    HistoryRetention(Timestamp),
+    HistoryBackup,
     ModelInspect(ModelId),
     ModelActivate(ModelId),
     ModelDelete(ModelId),
@@ -228,10 +239,122 @@ pub trait CredentialStorePort {
         reference: CredentialReferenceId,
         secret: CredentialSecret,
     ) -> PortResult<()>;
+
+    fn delete(&mut self, reference: CredentialReferenceId) -> PortResult<()>;
+}
+
+/// Safe non-secret configuration persistence. Requests contain only validated
+/// values and opaque credential references.
+pub trait ConfigurationStorePort {
+    fn load_recognition_configurations(&mut self) -> PortResult<Vec<RecognitionConfiguration>>;
+    fn save_recognition_configuration(
+        &mut self,
+        configuration: RecognitionConfiguration,
+    ) -> PortResult<()>;
+    fn set_active_recognition_configuration(
+        &mut self,
+        configuration: Option<voice_core::ConfigurationId>,
+    ) -> PortResult<()>;
+    fn active_recognition_configuration(
+        &mut self,
+    ) -> PortResult<Option<voice_core::ConfigurationId>>;
+    fn load_llm_configurations(&mut self) -> PortResult<Vec<LanguageModelConfiguration>>;
+    fn save_llm_configuration(
+        &mut self,
+        configuration: LanguageModelConfiguration,
+    ) -> PortResult<()>;
+    fn set_active_llm_configuration(
+        &mut self,
+        configuration: Option<voice_core::ConfigurationId>,
+    ) -> PortResult<()>;
+    fn active_llm_configuration(&mut self) -> PortResult<Option<voice_core::ConfigurationId>>;
+    fn load_retention_policy(&mut self) -> PortResult<RetentionPolicy>;
+    fn save_retention_policy(&mut self, policy: RetentionPolicy) -> PortResult<()>;
+}
+
+/// Prompt catalog and global selection persistence.
+pub trait PromptStorePort {
+    fn list_prompts(&mut self) -> PortResult<Vec<PromptPreset>>;
+    fn save_prompt(&mut self, prompt: PromptPreset) -> PortResult<()>;
+    fn delete_prompt(
+        &mut self,
+        prompt: PromptPresetId,
+        confirm_referenced: bool,
+    ) -> PortResult<PromptDeleteReport>;
+    fn set_active_prompt(&mut self, prompt: PromptPresetId) -> PortResult<()>;
+    fn active_prompt(&mut self) -> PortResult<PromptPresetId>;
+    fn activate_shortcut(
+        &mut self,
+        shortcut: &PromptShortcut,
+    ) -> PortResult<Option<PromptPresetId>>;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PromptDeleteReport {
+    pub deleted: bool,
+    pub affected_profiles: usize,
+}
+
+/// Hotword and application profile persistence.
+pub trait LibraryStorePort {
+    fn load_hotword_groups(&mut self) -> PortResult<Vec<HotwordGroup>>;
+    fn save_hotword_group(&mut self, group: HotwordGroup) -> PortResult<()>;
+    fn load_application_profiles(&mut self) -> PortResult<Vec<ApplicationProfile>>;
+    fn save_application_profile(&mut self, profile: ApplicationProfile) -> PortResult<()>;
+}
+
+/// Stable global processing-rule defaults and ordering.
+pub trait ProcessingConfigurationPort {
+    fn load_processing_order(&mut self) -> PortResult<ProcessingOrder>;
+    fn save_processing_order(&mut self, order: ProcessingOrder) -> PortResult<()>;
+    fn load_rule_defaults(&mut self) -> PortResult<Vec<(BuiltInRuleId, bool)>>;
+    fn save_rule_default(&mut self, rule: BuiltInRuleId, enabled: bool) -> PortResult<()>;
+    fn load_profile_override(
+        &mut self,
+        profile: voice_core::ApplicationProfileId,
+        rule: BuiltInRuleId,
+    ) -> PortResult<RuleOverride>;
+}
+
+/// Audio artifact metadata is persisted separately from `SQLite` text/history.
+pub trait AudioArtifactStorePort {
+    fn stage(&mut self, reference: AudioReferenceId, bytes: &[u8]) -> PortResult<()>;
+    fn commit(&mut self, reference: AudioReferenceId) -> PortResult<bool>;
+    fn delete(&mut self, reference: AudioReferenceId) -> PortResult<()>;
+    fn startup_maintenance(&mut self) -> PortResult<AudioMaintenanceReport>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AudioMaintenanceReport {
+    pub temporary_removed: u64,
+    pub queued_deleted: u64,
+    pub queued_remaining: u64,
+}
+
+/// Durable history maintenance and retention boundary.
+pub trait HistoryMaintenancePort {
+    fn delete_record(&mut self, record: DictationRecordId) -> PortResult<HistoryDeletionReport>;
+    fn delete_all_records(&mut self) -> PortResult<HistoryDeletionReport>;
+    fn apply_retention(&mut self, now: Timestamp) -> PortResult<RetentionReport>;
+    fn backup(&mut self) -> PortResult<Vec<u8>>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HistoryDeletionReport {
+    pub records: u64,
+    pub artifacts_queued: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RetentionReport {
+    pub records_deleted: u64,
+    pub text_cleared: u64,
+    pub audio_cleared: u64,
 }
 
 /// History and recovery persistence boundary.
 pub trait HistoryStorePort {
+    fn load_record(&mut self, record: DictationRecordId) -> PortResult<Option<DictationRecord>>;
     fn persist(&mut self, request: HistoryPersistRequest) -> PortResult<PersistenceReport>;
     fn persist_recovery(
         &mut self,
@@ -639,6 +762,221 @@ pub struct FakeCredentialStore {
     pub values: HashMap<CredentialReferenceId, CredentialSecret>,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FakeConfigurationStore {
+    pub recognition: Vec<RecognitionConfiguration>,
+    pub active_recognition: Option<voice_core::ConfigurationId>,
+    pub language_models: Vec<LanguageModelConfiguration>,
+    pub active_language_model: Option<voice_core::ConfigurationId>,
+    pub retention: RetentionPolicy,
+}
+
+impl ConfigurationStorePort for FakeConfigurationStore {
+    fn load_recognition_configurations(&mut self) -> PortResult<Vec<RecognitionConfiguration>> {
+        Ok(self.recognition.clone())
+    }
+
+    fn save_recognition_configuration(
+        &mut self,
+        configuration: RecognitionConfiguration,
+    ) -> PortResult<()> {
+        if let Some(existing) = self
+            .recognition
+            .iter_mut()
+            .find(|existing| existing.id() == configuration.id())
+        {
+            *existing = configuration;
+        } else {
+            self.recognition.push(configuration);
+        }
+        Ok(())
+    }
+
+    fn set_active_recognition_configuration(
+        &mut self,
+        configuration: Option<voice_core::ConfigurationId>,
+    ) -> PortResult<()> {
+        self.active_recognition = configuration;
+        Ok(())
+    }
+
+    fn active_recognition_configuration(
+        &mut self,
+    ) -> PortResult<Option<voice_core::ConfigurationId>> {
+        Ok(self.active_recognition)
+    }
+
+    fn load_llm_configurations(&mut self) -> PortResult<Vec<LanguageModelConfiguration>> {
+        Ok(self.language_models.clone())
+    }
+
+    fn save_llm_configuration(
+        &mut self,
+        configuration: LanguageModelConfiguration,
+    ) -> PortResult<()> {
+        if let Some(existing) = self
+            .language_models
+            .iter_mut()
+            .find(|existing| existing.id() == configuration.id())
+        {
+            *existing = configuration;
+        } else {
+            self.language_models.push(configuration);
+        }
+        Ok(())
+    }
+
+    fn set_active_llm_configuration(
+        &mut self,
+        configuration: Option<voice_core::ConfigurationId>,
+    ) -> PortResult<()> {
+        self.active_language_model = configuration;
+        Ok(())
+    }
+
+    fn active_llm_configuration(&mut self) -> PortResult<Option<voice_core::ConfigurationId>> {
+        Ok(self.active_language_model)
+    }
+
+    fn load_retention_policy(&mut self) -> PortResult<RetentionPolicy> {
+        Ok(self.retention)
+    }
+
+    fn save_retention_policy(&mut self, policy: RetentionPolicy) -> PortResult<()> {
+        self.retention = policy;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FakePromptStore {
+    pub prompts: Vec<PromptPreset>,
+    pub active: PromptPresetId,
+}
+
+impl PromptStorePort for FakePromptStore {
+    fn list_prompts(&mut self) -> PortResult<Vec<PromptPreset>> {
+        Ok(self.prompts.clone())
+    }
+
+    fn save_prompt(&mut self, prompt: PromptPreset) -> PortResult<()> {
+        if let Some(existing) = self
+            .prompts
+            .iter_mut()
+            .find(|existing| existing.id() == prompt.id())
+        {
+            *existing = prompt;
+        } else {
+            self.prompts.push(prompt);
+        }
+        Ok(())
+    }
+
+    fn delete_prompt(
+        &mut self,
+        prompt: PromptPresetId,
+        _confirm_referenced: bool,
+    ) -> PortResult<PromptDeleteReport> {
+        let before = self.prompts.len();
+        self.prompts.retain(|value| value.id() != prompt);
+        Ok(PromptDeleteReport {
+            deleted: before != self.prompts.len(),
+            affected_profiles: 0,
+        })
+    }
+
+    fn set_active_prompt(&mut self, prompt: PromptPresetId) -> PortResult<()> {
+        self.active = prompt;
+        Ok(())
+    }
+
+    fn active_prompt(&mut self) -> PortResult<PromptPresetId> {
+        Ok(self.active)
+    }
+
+    fn activate_shortcut(
+        &mut self,
+        shortcut: &PromptShortcut,
+    ) -> PortResult<Option<PromptPresetId>> {
+        let matched = self
+            .prompts
+            .iter()
+            .find(|prompt| prompt.shortcut() == Some(shortcut))
+            .map(PromptPreset::id);
+        if let Some(prompt) = matched {
+            self.active = prompt;
+        }
+        Ok(matched)
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FakeLibraryStore {
+    pub groups: Vec<HotwordGroup>,
+    pub profiles: Vec<ApplicationProfile>,
+}
+
+impl LibraryStorePort for FakeLibraryStore {
+    fn load_hotword_groups(&mut self) -> PortResult<Vec<HotwordGroup>> {
+        Ok(self.groups.clone())
+    }
+
+    fn save_hotword_group(&mut self, group: HotwordGroup) -> PortResult<()> {
+        self.groups.retain(|existing| existing.id() != group.id());
+        self.groups.push(group);
+        Ok(())
+    }
+
+    fn load_application_profiles(&mut self) -> PortResult<Vec<ApplicationProfile>> {
+        Ok(self.profiles.clone())
+    }
+
+    fn save_application_profile(&mut self, profile: ApplicationProfile) -> PortResult<()> {
+        self.profiles
+            .retain(|existing| existing.id() != profile.id());
+        self.profiles.push(profile);
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FakeProcessingConfiguration {
+    pub order: ProcessingOrder,
+    pub defaults: Vec<(BuiltInRuleId, bool)>,
+}
+
+impl ProcessingConfigurationPort for FakeProcessingConfiguration {
+    fn load_processing_order(&mut self) -> PortResult<ProcessingOrder> {
+        Ok(self.order.clone())
+    }
+
+    fn save_processing_order(&mut self, order: ProcessingOrder) -> PortResult<()> {
+        self.order = order;
+        Ok(())
+    }
+
+    fn load_rule_defaults(&mut self) -> PortResult<Vec<(BuiltInRuleId, bool)>> {
+        Ok(self.defaults.clone())
+    }
+
+    fn save_rule_default(&mut self, rule: BuiltInRuleId, enabled: bool) -> PortResult<()> {
+        if let Some(existing) = self.defaults.iter_mut().find(|(value, _)| *value == rule) {
+            existing.1 = enabled;
+        } else {
+            self.defaults.push((rule, enabled));
+        }
+        Ok(())
+    }
+
+    fn load_profile_override(
+        &mut self,
+        _profile: voice_core::ApplicationProfileId,
+        _rule: BuiltInRuleId,
+    ) -> PortResult<RuleOverride> {
+        Ok(RuleOverride::Inherit)
+    }
+}
+
 impl CredentialStorePort for FakeCredentialStore {
     fn read(&mut self, reference: CredentialReferenceId) -> PortResult<CredentialSecret> {
         self.calls.push(PortCall::CredentialRead(reference));
@@ -661,6 +999,12 @@ impl CredentialStorePort for FakeCredentialStore {
         self.values.insert(reference, secret);
         Ok(())
     }
+
+    fn delete(&mut self, reference: CredentialReferenceId) -> PortResult<()> {
+        self.calls.push(PortCall::CredentialDelete(reference));
+        self.values.remove(&reference);
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -671,7 +1015,97 @@ pub struct FakeHistoryStore {
     pub retry_results: VecDeque<PortResult<()>>,
 }
 
+/// Scripted audio-artifact fake for maintenance and persistence integration tests.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FakeAudioArtifactStore {
+    pub calls: Vec<PortCall>,
+    pub stage_results: VecDeque<PortResult<()>>,
+    pub commit_results: VecDeque<PortResult<bool>>,
+    pub delete_results: VecDeque<PortResult<()>>,
+    pub startup_results: VecDeque<PortResult<AudioMaintenanceReport>>,
+}
+
+impl AudioArtifactStorePort for FakeAudioArtifactStore {
+    fn stage(&mut self, reference: AudioReferenceId, _bytes: &[u8]) -> PortResult<()> {
+        self.calls.push(PortCall::AudioStage(reference));
+        self.stage_results.pop_front().unwrap_or(Ok(()))
+    }
+
+    fn commit(&mut self, reference: AudioReferenceId) -> PortResult<bool> {
+        self.calls.push(PortCall::AudioCommit(reference));
+        self.commit_results.pop_front().unwrap_or(Ok(true))
+    }
+
+    fn delete(&mut self, reference: AudioReferenceId) -> PortResult<()> {
+        self.calls.push(PortCall::AudioArtifactDelete(reference));
+        self.delete_results.pop_front().unwrap_or(Ok(()))
+    }
+
+    fn startup_maintenance(&mut self) -> PortResult<AudioMaintenanceReport> {
+        self.calls.push(PortCall::AudioStartupMaintenance);
+        self.startup_results
+            .pop_front()
+            .unwrap_or(Ok(AudioMaintenanceReport {
+                temporary_removed: 0,
+                queued_deleted: 0,
+                queued_remaining: 0,
+            }))
+    }
+}
+
+/// Scripted history-maintenance fake with observable delegation calls.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FakeHistoryMaintenance {
+    pub calls: Vec<PortCall>,
+    pub delete_record_results: VecDeque<PortResult<HistoryDeletionReport>>,
+    pub delete_all_results: VecDeque<PortResult<HistoryDeletionReport>>,
+    pub retention_results: VecDeque<PortResult<RetentionReport>>,
+    pub backup_results: VecDeque<PortResult<Vec<u8>>>,
+}
+
+impl HistoryMaintenancePort for FakeHistoryMaintenance {
+    fn delete_record(&mut self, record: DictationRecordId) -> PortResult<HistoryDeletionReport> {
+        self.calls.push(PortCall::HistoryDeleteRecord(record));
+        self.delete_record_results
+            .pop_front()
+            .unwrap_or(Ok(HistoryDeletionReport {
+                records: 1,
+                artifacts_queued: 0,
+            }))
+    }
+
+    fn delete_all_records(&mut self) -> PortResult<HistoryDeletionReport> {
+        self.calls.push(PortCall::HistoryDeleteAll);
+        self.delete_all_results
+            .pop_front()
+            .unwrap_or(Ok(HistoryDeletionReport {
+                records: 0,
+                artifacts_queued: 0,
+            }))
+    }
+
+    fn apply_retention(&mut self, now: Timestamp) -> PortResult<RetentionReport> {
+        self.calls.push(PortCall::HistoryRetention(now));
+        self.retention_results
+            .pop_front()
+            .unwrap_or(Ok(RetentionReport {
+                records_deleted: 0,
+                text_cleared: 0,
+                audio_cleared: 0,
+            }))
+    }
+
+    fn backup(&mut self) -> PortResult<Vec<u8>> {
+        self.calls.push(PortCall::HistoryBackup);
+        self.backup_results.pop_front().unwrap_or(Ok(Vec::new()))
+    }
+}
+
 impl HistoryStorePort for FakeHistoryStore {
+    fn load_record(&mut self, _record: DictationRecordId) -> PortResult<Option<DictationRecord>> {
+        Ok(None)
+    }
+
     fn persist(&mut self, request: HistoryPersistRequest) -> PortResult<PersistenceReport> {
         self.calls.push(PortCall::HistoryPersist(request.record_id));
         self.persist_results
